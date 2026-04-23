@@ -163,22 +163,24 @@ The patched APK needs to be signed before installation. The patcher uses a keyst
 
 ### Generating a Keystore
 
-Create a local keystore (do not commit it), then run `patch.sh` with env vars:
-
-```bash
-FEURSTAGRAM_KEYSTORE=./feurstagram.keystore \
-FEURSTAGRAM_KEYSTORE_PASS=your_store_password \
-FEURSTAGRAM_KEY_ALIAS=android \
-./patch.sh instagram.apk
-```
-
 If `feurstagram.keystore` doesn't exist yet, create one:
 
 ```bash
 keytool -genkey -v -keystore feurstagram.keystore -alias feurstagram \
   -keyalg RSA -keysize 2048 -validity 10000 \
-  -storepass android -keypass android \
+  -storepass STOREPASS -keypass KEYPASS \
   -dname "CN=Feurstagram, OU=Feurstagram, O=Feurstagram, L=Unknown, ST=Unknown, C=XX"
+```
+
+Create a local keystore (do not commit it), then run `patch.sh` with env vars:
+(replace [STOREPASS and KEYPASS](https://knowledge.informatica.com/s/article/145442?language=en_US) with your own desired passwords)
+
+```bash
+FEURSTAGRAM_KEYSTORE=./feurstagram.keystore \
+FEURSTAGRAM_KEYSTORE_PASS=STOREPASS \
+FEURSTAGRAM_KEY_PASS=KEYPASS
+FEURSTAGRAM_KEY_ALIAS=feurstagram \
+./patch.sh instagram.apk
 ```
 
 ### Keystore Details
