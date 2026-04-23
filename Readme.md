@@ -168,7 +168,7 @@ Create a local keystore (do not commit it), then run `patch.sh` with env vars:
 ```bash
 FEURSTAGRAM_KEYSTORE=./feurstagram.keystore \
 FEURSTAGRAM_KEYSTORE_PASS=your_store_password \
-FEURSTAGRAM_KEY_ALIAS=feurstagram \
+FEURSTAGRAM_KEY_ALIAS=android \
 ./patch.sh instagram.apk
 ```
 
