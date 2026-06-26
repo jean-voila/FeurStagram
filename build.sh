@@ -84,7 +84,7 @@ fi
 echo "    bundle: $MPP"
 
 echo "==> [2/3] Applying to $(basename "$APK")"
-ARGS=(-jar "$CLI" patch -p "$MPP" -f --purge -o "$OUT")
+ARGS=(-jar "$CLI" patch -p "$MPP" -f --purge --bytecode-mode=FULL -o "$OUT")
 [ "$CLONE" -eq 1 ] && ARGS+=(-e "Clone")
 
 # With a keystore password, defer signing to apksigner (the CLI can't read the

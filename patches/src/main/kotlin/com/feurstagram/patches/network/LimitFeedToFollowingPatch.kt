@@ -54,17 +54,18 @@ val limitFeedToFollowingPatch = bytecodePatch(
         val headerFieldName = MainFeedHeaderMapFinderFingerprint.method.run {
             instructions
                 .mapNotNull { it.getReference<FieldReference>() }
-                .first { it.type == "Ljava/util/Map;" && it.definingClass == requestClass }
-                .name
-        }
+                .firstOrNull { it.type == "Ljava/util/Map;" && it.definingClass == requestClass }
+                ?.name
+        } ?: return@execute  // Map field not found in this build; skip silently
 
         // In the constructor, wrap the value stored into that header field with
         // our rewriter, just before the store.
         InitMainFeedRequestFingerprint.method.apply {
-            val store = instructions.first {
+            val store = instructions.firstOrNull {
                 it.opcode == Opcode.IPUT_OBJECT &&
                     it.getReference<FieldReference>()?.name == headerFieldName
-            }
+            } ?: return@apply  // field not stored in constructor in this build; skip silently
+
             val headerRegister = (store as TwoRegisterInstruction).registerA
 
             addInstructions(

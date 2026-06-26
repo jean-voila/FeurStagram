@@ -105,6 +105,12 @@ public final class Config {
     public static boolean isSuggestedBlocked() { return getBlocked("block_suggested", true); }
     public static boolean isAdsBlocked()       { return getBlocked("block_ads", true); }
 
+    /**
+     * Whether the repost button on Reels is disabled (tapping it does nothing),
+     * to prevent accidental reposts. Off by default.
+     */
+    public static boolean isRepostBlocked() { return getBlocked("block_repost", false); }
+
     /** Snapshot the current value of every block_* toggle for the permanent lock. */
     public static void captureBaseline() {
         HashMap<String, Boolean> baseline = new HashMap<>();

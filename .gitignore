@@ -3,6 +3,8 @@
 *.idsig
 *.mpe
 *.mpp
+*.xapk
+/xapk_extract
 
 # Local tooling (Morphe CLI is downloaded locally)
 tools/
@@ -21,6 +23,7 @@ local.properties
 # IDE
 *.iml
 /.idea
+CLAUDE.md
 
 # OS
 .DS_Store

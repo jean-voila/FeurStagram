@@ -13,6 +13,7 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.net.Uri;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -51,17 +52,68 @@ public final class Settings {
 
     private Settings() {}
 
+    private static final java.util.Set<View> INSTALLED_WINDOWS =
+            java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
+    private static final java.util.Set<View> WIRED_TABS =
+            java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
+
     /**
-     * Install the Feurstagram entry points off the bottom tab bar: the settings
-     * button in the feed's top action bar, the UI hiders, and the launch update
-     * check. The tab bar is just a stable handle into the window's view tree.
+     * Install the Feurstagram entry points on the main activity's window: a
+     * long-press handler on the Home tab that opens this settings menu, plus the
+     * surface hiders, repost guard and launch update check. Idempotent per
+     * window, so it is safe to call on every onWindowFocusChanged.
      */
-    public static void installHomeTabWatcher(ViewGroup tabBar) {
-        if (tabBar == null) return;
-        tabBar.getRootView().getViewTreeObserver()
-                .addOnGlobalLayoutListener(new ActionBarWatcher(tabBar.getRootView()));
-        Hiders.installAll(tabBar);
-        UpdateChecker.check(getActivityContext(tabBar));
+    public static void installEntryPoints(Activity activity) {
+        if (activity == null) return;
+        try {
+            Window window = activity.getWindow();
+            if (window == null) return;
+            View decor = window.getDecorView();
+            if (!(decor instanceof ViewGroup)) return;
+            ViewGroup root = (ViewGroup) decor;
+            synchronized (INSTALLED_WINDOWS) {
+                if (!INSTALLED_WINDOWS.add(root)) return;
+            }
+            root.getViewTreeObserver()
+                    .addOnGlobalLayoutListener(new HomeTabLongPressWatcher(root));
+            Hiders.installAll(root);
+            RepostBlocker.install(root);
+            UpdateChecker.check(activity);
+        } catch (Throwable t) {
+            Log.e("FeurStagram", "installEntryPoints failed", t);
+        }
+    }
+
+    /**
+     * Attaches a long-press listener to the Home bottom-tab button that opens the
+     * settings menu. The tab view is rebuilt across navigation, so the listener
+     * re-wires it on each layout pass (guarded so each instance is wired once).
+     */
+    private static final class HomeTabLongPressWatcher
+            implements android.view.ViewTreeObserver.OnGlobalLayoutListener {
+        private final View root;
+
+        HomeTabLongPressWatcher(View root) {
+            this.root = root;
+        }
+
+        @Override
+        public void onGlobalLayout() {
+            Context ctx = root.getContext();
+            if (ctx == null) return;
+            int id = Hiders.resolveId(ctx, "feed_tab");
+            if (id == 0) return;
+            View tab = root.findViewById(id);
+            if (tab == null) return;
+            synchronized (WIRED_TABS) {
+                if (!WIRED_TABS.add(tab)) return;
+            }
+            tab.setOnLongClickListener(v -> {
+                Context activity = getActivityContext(v);
+                if (activity != null) show(activity);
+                return true;
+            });
+        }
     }
 
     /** Unwrap a view's context down to the hosting Activity when possible. */
@@ -103,6 +155,7 @@ public final class Settings {
             }
             dialog.show();
         } catch (Throwable t) {
+            Log.e("FeurStagram", "Settings dialog failed to open", t);
             Toast.makeText(context, "Feurstagram settings unavailable here", Toast.LENGTH_LONG).show();
         }
     }
@@ -154,6 +207,11 @@ public final class Settings {
         LinearLayout feed = makeSectionCard(context);
         column.addView(feed);
         addRow(context, feed, "Following feed only", "limit_following_feed", Config.isFollowingFeedOnly());
+
+        addSectionHeader(context, column, "REELS");
+        LinearLayout reels = makeSectionCard(context);
+        column.addView(reels);
+        addRow(context, reels, "Disable reposting", "block_repost", Config.isRepostBlocked());
 
         addSectionHeader(context, column, "LANDING PAGE");
         column.addView(buildLandingCard(context));
@@ -423,6 +481,8 @@ public final class Settings {
             sub.setText("Block sponsored ads across Instagram.");
         } else if (key.equals("limit_following_feed")) {
             sub.setText("Show only accounts you follow (needs the feed unblocked).");
+        } else if (key.equals("block_repost")) {
+            sub.setText("Make the repost button on Reels do nothing, to prevent accidental reposts.");
         } else {
             sub.setText("Hide this surface in Instagram.");
         }
