@@ -156,6 +156,7 @@ combination.
 | **Suggested accounts** | Blocked | Yes | Network-level + feed-parse blocking |
 | **Instants (+ button in DMs)** | Blocked | Yes | View visibility hidden |
 | **Notes (text bubbles above DMs)** | Blocked | Yes | View visibility hidden |
+| **Bubbles (friend like/repost)** | Visible | Yes | UI-model factory hooks |
 | **Ads** | Blocked | Yes | Network-level + feed-parse blocking |
 | **Analytics & telemetry** | Blocked | No | Always blocked |
 | **Shopping / commerce preloads** | Blocked | No | Always blocked |
@@ -183,7 +184,9 @@ of just the accounts you follow, with the recommended/ranked posts dropped.
 main tab bar). A full-screen, scrollable settings page opens with:
 
 - **Blocked surfaces** — toggles for Home Feed, Explore, Reels, Stories,
-  Suggested accounts, Ads, Instants, and Notes.
+  Suggested accounts, Ads, Instants, Notes, and Bubbles (the floating friend
+  like/repost avatar bubbles overlaid on reels, feed posts and the saved-reels
+  grid).
 - **Feed** — *Following feed only*: restrict the Home Feed to accounts you
   follow (chronological), instead of the recommended feed. Has effect only when
   the Home Feed is left unblocked.

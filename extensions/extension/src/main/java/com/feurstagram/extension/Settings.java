@@ -151,6 +151,7 @@ public final class Settings {
         addRow(context, surfaces, "Notes", "block_notes", Config.isNotesBlocked());
         addRow(context, surfaces, "Suggested accounts", "block_suggested", Config.isSuggestedBlocked());
         addRow(context, surfaces, "Ads", "block_ads", Config.isAdsBlocked());
+        addRow(context, surfaces, "Bubbles", "block_bubbles", Config.isBubblesBlocked());
         addRow(context, surfaces, "Notifications button", "block_notifications", Config.isNotificationsButtonBlocked());
 
         addSectionHeader(context, column, "NAVIGATION BAR");
@@ -443,6 +444,8 @@ public final class Settings {
             sub.setText("Check GitHub for a new version on launch.");
         } else if (key.equals("block_ads")) {
             sub.setText("Block sponsored ads across Instagram.");
+        } else if (key.equals("block_bubbles")) {
+            sub.setText("Hide the floating friend like/repost bubbles on reels, feed and grid.");
         } else if (key.equals("limit_following_feed")) {
             sub.setText("Show only accounts you follow (needs the feed unblocked).");
         } else if (key.equals("block_notifications")) {
