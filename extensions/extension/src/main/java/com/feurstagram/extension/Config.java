@@ -104,6 +104,41 @@ public final class Config {
     public static boolean isNotesBlocked()     { return getBlocked("block_notes", true); }
     public static boolean isSuggestedBlocked() { return getBlocked("block_suggested", true); }
     public static boolean isAdsBlocked()       { return getBlocked("block_ads", true); }
+    public static boolean isBubblesBlocked()   { return getBlocked("block_bubbles", false); }
+
+    /**
+     * Cached toggle read for the bytecode-patched bubble hooks. Those hooks fire on
+     * hot paths (per feed item / reel gate), so we avoid a SharedPreferences +
+     * reflection lookup on every call. Toggling any block goes through a full app
+     * restart (see the settings page), so the value is constant for a process
+     * lifetime and safe to cache once the app Context exists.
+     */
+    private static Boolean sBubblesCache;
+
+    /** True when the friend like/repost bubbles should be hidden (Bubbles toggle). */
+    public static boolean hideBubblesCached() {
+        Boolean value = sBubblesCache;
+        if (value != null) return value;
+        if (getAppContext() == null) return false; // too early; don't cache yet
+        boolean resolved = isBubblesBlocked();
+        sBubblesCache = resolved;
+        return resolved;
+    }
+
+    // ---- Return-value filters used by the "Hide bubbles" bytecode patch ----
+    // The patch routes a hooked method's return value through one of these, which
+    // is verify-safe (it never clobbers the method's own registers). Each returns
+    // the original value untouched unless the Bubbles toggle is on.
+
+    /** Bubble show-gate (reels FriendlyViewer): force off when Bubbles is on. */
+    public static boolean applyBubbleGate(boolean original) {
+        return hideBubblesCached() ? false : original;
+    }
+
+    /** Bubble UI-state factory (feed/grid like & repost): null it when Bubbles is on. */
+    public static Object applyBubbleObject(Object original) {
+        return hideBubblesCached() ? null : original;
+    }
 
     /**
      * Whether the notifications ("heart") button in the feed header is hidden.
@@ -133,6 +168,7 @@ public final class Config {
         baseline.put("block_notes", isNotesBlocked());
         baseline.put("block_suggested", isSuggestedBlocked());
         baseline.put("block_ads", isAdsBlocked());
+        baseline.put("block_bubbles", isBubblesBlocked());
         sBaseline = baseline;
     }
 
