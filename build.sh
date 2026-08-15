@@ -2,12 +2,17 @@
 #
 # Feurstagram build pipeline.
 #
-#   ./build.sh <instagram.apk> [--clone] [--install]
+#   ./build.sh <instagram.apk|.apkm|.xapk|.apks> [--clone] [--install]
 #
 # Builds the patch bundle (.mpp) from the Gradle project, then applies it to the
 # given Instagram APK with the local Morphe CLI, producing ./feurstagram.apk.
 #   --clone     install side-by-side as a separate package (com.instagram.android.feurstagram)
 #   --install   install the result on the connected ADB device
+#
+# Split bundles: an APKMirror .apkm (or .xapk/.apks) is a zip of base.apk plus
+# split APKs. The Morphe CLI patches one APK, so those are merged into a single
+# universal APK with APKEditor (tools/APKEditor-*.jar) before patching. The merge
+# is cached under build/merged/ and reused while it is newer than the bundle.
 #
 # Signing: set FEURSTAGRAM_KEYSTORE_PASS (and optionally FEURSTAGRAM_KEY_PASS)
 # to sign with feurstagram.keystore. That keystore is PKCS12, which the Morphe
@@ -18,8 +23,11 @@
 # the CLI signs with a throwaway key (fine for testing, not for release).
 set -euo pipefail
 
+# Note the "|| true" on the ls|head lookups below: under `pipefail` a glob that
+# matches nothing makes the whole substitution fail, and `set -e` would abort the
+# script before the "not found" message it is meant to feed could ever print.
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CLI="$(ls -t "$DIR"/tools/morphe-cli-*.jar 2>/dev/null | head -1)"
+CLI="$(ls -t "$DIR"/tools/morphe-cli-*.jar 2>/dev/null | head -1 || true)"
 OUT="$DIR/feurstagram.apk"
 
 # Morphe's Android Gradle plugin targets JDK 17-21; pin to 21 so the build does
@@ -51,7 +59,7 @@ KEYSTORE="${FEURSTAGRAM_KEYSTORE:-$DIR/feurstagram.keystore}"
 KEY_ALIAS="${FEURSTAGRAM_KEY_ALIAS:-feurstagram}"
 APKSIGNER=""
 if [ -n "${ANDROID_HOME:-}" ]; then
-    APKSIGNER="$(ls -t "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | head -1)"
+    APKSIGNER="$(ls -t "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | head -1 || true)"
 fi
 
 APK=""
@@ -66,7 +74,7 @@ for arg in "$@"; do
 done
 
 if [ -z "$APK" ] || [ ! -f "$APK" ]; then
-    echo "usage: ./build.sh <instagram.apk> [--clone] [--install]" >&2
+    echo "usage: ./build.sh <instagram.apk|.apkm|.xapk|.apks> [--clone] [--install]" >&2
     exit 1
 fi
 if [ -z "$CLI" ]; then
@@ -74,9 +82,39 @@ if [ -z "$CLI" ]; then
     exit 1
 fi
 
+# A split bundle has to become one universal APK before the patcher can touch it.
+case "$APK" in
+    *.apkm | *.xapk | *.apks)
+        EDITOR="$(ls -t "$DIR"/tools/APKEditor-*.jar 2>/dev/null | head -1 || true)"
+        if [ -z "$EDITOR" ]; then
+            echo "Error: $(basename "$APK") is a split bundle and needs APKEditor to merge." >&2
+            echo "       Fetch it into tools/, then re-run:" >&2
+            echo "       gh release download V1.4.9 -R REAndroid/APKEditor -p 'APKEditor-1.4.9.jar' -D tools/" >&2
+            exit 1
+        fi
+        MERGED="$DIR/build/merged/$(basename "${APK%.*}").apk"
+        if [ -f "$MERGED" ] && [ "$MERGED" -nt "$APK" ]; then
+            echo "==> [0/3] Reusing merged bundle: $(basename "$MERGED")"
+        else
+            echo "==> [0/3] Merging splits from $(basename "$APK")"
+            mkdir -p "$(dirname "$MERGED")"
+            # The bundle holds base.apk plus feature/density splits; -f overwrites
+            # a stale merge. Instagram's is ~400 MB, so give the JVM room. The
+            # per-file merge log is noisy, so keep it on disk rather than inline.
+            if ! java -Xmx4g -jar "$EDITOR" m -f -i "$APK" -o "$MERGED" > "$MERGED.log" 2>&1; then
+                echo "Error: APKEditor failed to merge $(basename "$APK")." >&2
+                echo "       Log: $MERGED.log" >&2
+                exit 1
+            fi
+            echo "    merged: $MERGED"
+        fi
+        APK="$MERGED"
+        ;;
+esac
+
 echo "==> [1/3] Building patch bundle (.mpp)"
 "$DIR/gradlew" -p "$DIR" :patches:build
-MPP="$(ls -t "$DIR"/patches/build/libs/patches-*[0-9].mpp 2>/dev/null | grep -v -- '-sources\|-javadoc' | head -1)"
+MPP="$(ls -t "$DIR"/patches/build/libs/patches-*[0-9].mpp 2>/dev/null | grep -v -- '-sources\|-javadoc' | head -1 || true)"
 if [ -z "$MPP" ]; then
     echo "Error: no .mpp produced under patches/build/libs/" >&2
     exit 1
