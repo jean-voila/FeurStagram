@@ -2,6 +2,7 @@ package com.feurstagram.extension;
 
 import android.app.ActivityManager;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Process;
 import android.widget.Toast;
 
@@ -58,14 +59,43 @@ public final class CacheCleaner implements Runnable {
         } catch (Throwable ignored) {
         }
 
-        try {
-            stopAllAppProcesses(context);
-            Thread.sleep(500);
-        } catch (Throwable ignored) {
+        // Kill Instagram's other processes first — they hold prefetch state too —
+        // but keep this one alive long enough to hand the restart to the relay.
+        stopAppProcesses(context, true);
+
+        if (startRestartRelay(context)) {
+            // The relay kills this process from the outside and relaunches the app.
+            // If it somehow never arrives, fall through rather than hang here.
+            try {
+                Thread.sleep(RELAY_TIMEOUT_MS);
+            } catch (Throwable ignored) {
+            }
         }
 
-        stopAllAppProcesses(context);
+        stopAppProcesses(context, false);
         Process.killProcess(Process.myPid());
+    }
+
+    /** How long the relay gets to kill this process before we do it ourselves. */
+    private static final long RELAY_TIMEOUT_MS = 5000L;
+
+    /**
+     * Hand the restart to {@link RestartActivity}, which the Restart relay patch
+     * declares in a process of its own. Without it "clear cache and restart" only
+     * ever did the first half: the app vanished and the system surfaced whatever
+     * task sat behind it — on a device that also has stock Instagram installed,
+     * confusingly the unpatched app.
+     *
+     * @return whether the relay was started (false falls back to the plain kill)
+     */
+    private static boolean startRestartRelay(Context context) {
+        if (context == null) return false;
+        try {
+            context.startActivity(RestartActivity.intentFor(context, Process.myPid()));
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     // Reels video chunks live under cacheDir/filesDir ExoPlayer dirs.
@@ -217,8 +247,13 @@ public final class CacheCleaner implements Runnable {
         }
     }
 
-    /** Best-effort force-close: kill every process belonging to this app. */
-    private static void stopAllAppProcesses(Context context) {
+    /**
+     * Best-effort force-close: kill every process belonging to this app.
+     *
+     * @param keepSelf spare this process (and, with it, the relay it is about to
+     *                 start) so the restart has something left to run in
+     */
+    private static void stopAppProcesses(Context context, boolean keepSelf) {
         if (context == null) return;
         try {
             ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
@@ -231,13 +266,16 @@ public final class CacheCleaner implements Runnable {
             } catch (Throwable ignored) {
             }
 
+            int self = Process.myPid();
             String prefix = pkg + ":";
             List<ActivityManager.RunningAppProcessInfo> running = am.getRunningAppProcesses();
             if (running == null) return;
             for (ActivityManager.RunningAppProcessInfo info : running) {
                 if (info == null || info.processName == null) continue;
+                if (info.pid <= 0) continue;
+                if (keepSelf && info.pid == self) continue;
                 if (info.processName.equals(pkg) || info.processName.startsWith(prefix)) {
-                    if (info.pid > 0) Process.killProcess(info.pid);
+                    Process.killProcess(info.pid);
                 }
             }
         } catch (Throwable ignored) {

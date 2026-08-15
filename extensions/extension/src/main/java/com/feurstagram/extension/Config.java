@@ -55,21 +55,41 @@ public final class Config {
     }
 
     public static void setBlocked(String key, boolean value) {
-        // Hardcore lock only forbids *relaxing* a block (turning it off). Turning
-        // a block on is always allowed so users can still tighten. A surface may
-        // be turned off only when it was already unblocked at the start of the
-        // current settings session (undo of a mis-toggle); a surface blocked at
-        // session open stays frozen until a reinstall.
+        // Hardcore lock only forbids *revealing* a surface. Hiding one is always
+        // allowed so users can still tighten. A surface may be revealed only when
+        // it was already visible at the start of the current settings session
+        // (undo of a mis-toggle); one hidden at session open stays frozen until a
+        // reinstall.
         if (isHardcoreMode()
-                && key != null
-                && key.startsWith("block_")
-                && !value
-                && isBaselineBlocked(key)) {
+                && isLockable(key)
+                && !hidesSurface(key, value)
+                && wasHiddenAtBaseline(key)) {
             return;
         }
         SharedPreferences prefs = prefs();
         if (prefs == null) return;
         prefs.edit().putBoolean(key, value).apply();
+    }
+
+    /**
+     * Toggles the permanent lock can freeze: the content blocks and the
+     * navigation-bar icons. The nav icons are cosmetic, but hiding one is how
+     * people cut off a surface they keep falling back into (the Direct tab's
+     * search behaves like Explore), so leaving them freely re-enabled defeated
+     * the lock — issue #93.
+     */
+    public static boolean isLockable(String key) {
+        return key != null && (key.startsWith("block_") || key.startsWith("nav_show_"));
+    }
+
+    /**
+     * Whether this value leaves the surface hidden. The two families store
+     * opposite polarities: {@code block_*} is true when hidden, {@code nav_show_*}
+     * is true when shown.
+     */
+    public static boolean hidesSurface(String key, boolean value) {
+        if (key == null) return false;
+        return key.startsWith("nav_show_") ? !value : value;
     }
 
     public static boolean isHardcoreMode() {
@@ -113,6 +133,16 @@ public final class Config {
     public static boolean isNotificationsButtonBlocked() { return getBlocked("block_notifications", false); }
 
     /**
+     * Whether Instagram's popups (its own toasts: "Couldn't refresh feed",
+     * "Impossible d'actualiser le fil", ...) are dropped. On by default: blocking
+     * a surface makes Instagram see a failed request and raise one every time, so
+     * they are noise the mod creates itself. All of them go, not just the errors —
+     * see {@link Toasts}. Deliberately not a {@code block_*} key: it is not a
+     * content surface, so the permanent lock must not freeze it.
+     */
+    public static boolean arePopupsHidden() { return getBlocked("hide_toasts", true); }
+
+    /**
      * Bottom-navigation icon visibility, stored per tab as {@code nav_show_<tab>}
      * (true = shown). Independent of the content blocks, so hiding the Reels
      * *icon* is decoupled from blocking Reels *content*. Home is deliberately not
@@ -131,7 +161,18 @@ public final class Config {
 
     public static void setOnboardingDone() { setBlocked("onboarding_done", true); }
 
-    /** Snapshot the current value of every block_* toggle for the permanent lock. */
+    /** Navigation-bar icons, with the default the getters use (true = shown). */
+    private static final String[] NAV_KEYS = {
+            "nav_show_search", "nav_show_reels", "nav_show_create",
+            "nav_show_direct", "nav_show_profile",
+    };
+
+    /** Only Reels defaults to hidden; see {@link #isReelsTabShown()}. */
+    private static boolean navDefault(String key) {
+        return !"nav_show_reels".equals(key);
+    }
+
+    /** Snapshot every lockable toggle's current value for the permanent lock. */
     public static void captureBaseline() {
         HashMap<String, Boolean> baseline = new HashMap<>();
         baseline.put("block_feed", isFeedBlocked());
@@ -142,18 +183,23 @@ public final class Config {
         baseline.put("block_notes", isNotesBlocked());
         baseline.put("block_suggested", isSuggestedBlocked());
         baseline.put("block_ads", isAdsBlocked());
+        for (String key : NAV_KEYS) {
+            baseline.put(key, getBlocked(key, navDefault(key)));
+        }
         sBaseline = baseline;
     }
 
     /**
-     * True if the given block_* key was already blocked at the start of the
+     * True if the given key's surface was already hidden at the start of the
      * current settings session. Falls back to the live persisted value when no
      * baseline was captured (calls outside the settings page).
      */
-    public static boolean isBaselineBlocked(String key) {
-        if (sBaseline == null) return getBlocked(key, false);
-        Boolean value = sBaseline.get(key);
-        return value != null && value;
+    public static boolean wasHiddenAtBaseline(String key) {
+        Boolean captured = sBaseline == null ? null : sBaseline.get(key);
+        boolean value = captured != null
+                ? captured
+                : getBlocked(key, key != null && key.startsWith("nav_show_") && navDefault(key));
+        return hidesSurface(key, value);
     }
 
     /**

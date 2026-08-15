@@ -167,6 +167,11 @@ public final class Settings {
         column.addView(feed);
         addRow(context, feed, "Following feed only", "limit_following_feed", Config.isFollowingFeedOnly());
 
+        addSectionHeader(context, column, "POPUPS");
+        LinearLayout popups = makeSectionCard(context);
+        column.addView(popups);
+        addRow(context, popups, "Instagram popups", "hide_toasts", Config.arePopupsHidden());
+
         addSectionHeader(context, column, "LANDING PAGE");
         column.addView(buildLandingCard(context));
 
@@ -445,6 +450,8 @@ public final class Settings {
             sub.setText("Block sponsored ads across Instagram.");
         } else if (key.equals("limit_following_feed")) {
             sub.setText("Show only accounts you follow (needs the feed unblocked).");
+        } else if (key.equals("hide_toasts")) {
+            sub.setText("Hide every Instagram popup, including “couldn’t refresh feed”.");
         } else if (key.equals("block_notifications")) {
             sub.setText("Hide the notifications (heart) button in the feed header.");
         } else if (key.startsWith("nav_show_")) {
@@ -464,17 +471,18 @@ public final class Settings {
         toggle.setTrackTintList(buildStateList(PRIMARY, OUTLINE));
         toggle.setThumbTintList(buildStateList(ON_PRIMARY, OUTLINE));
         toggle.setOnCheckedChangeListener((btn, isChecked) -> {
-            // Hardcore: a frozen surface cannot be relaxed; snap it back on.
-            if (Config.isHardcoreMode() && !isChecked && key.startsWith("block_") && Config.isBaselineBlocked(key)) {
-                btn.setChecked(true);
+            // Hardcore: a frozen surface cannot be revealed; snap it back to hidden.
+            if (Config.isHardcoreMode() && Config.isLockable(key)
+                    && !Config.hidesSurface(key, isChecked) && Config.wasHiddenAtBaseline(key)) {
+                btn.setChecked(!isChecked);
                 return;
             }
             Config.setBlocked(key, isChecked);
             Config.setNeedsRestart();
         });
 
-        // Freeze already-blocked block_* rows under the permanent lock.
-        if (key.startsWith("block_") && Config.isHardcoreMode() && value) {
+        // Freeze rows whose surface is already hidden under the permanent lock.
+        if (Config.isLockable(key) && Config.isHardcoreMode() && Config.hidesSurface(key, value)) {
             toggle.setEnabled(false);
             row.setAlpha(0.38f);
         } else {
