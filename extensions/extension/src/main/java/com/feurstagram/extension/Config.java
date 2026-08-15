@@ -122,6 +122,15 @@ public final class Config {
      */
     public static boolean isReelsTabShown() { return getBlocked("nav_show_reels", false); }
 
+    /**
+     * Whether the first-run coach mark (long-press Home to open settings) has
+     * already been shown on this installation. Set once, never cleared: the guide
+     * is a one-time thing, not a setting.
+     */
+    public static boolean isOnboardingDone() { return getBlocked("onboarding_done", false); }
+
+    public static void setOnboardingDone() { setBlocked("onboarding_done", true); }
+
     /** Snapshot the current value of every block_* toggle for the permanent lock. */
     public static void captureBaseline() {
         HashMap<String, Boolean> baseline = new HashMap<>();
