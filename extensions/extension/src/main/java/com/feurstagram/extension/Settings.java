@@ -146,6 +146,7 @@ public final class Settings {
         addRow(context, surfaces, "Home Feed", "block_feed", Config.isFeedBlocked());
         addRow(context, surfaces, "Explore", "block_explore", Config.isExploreBlocked());
         addRow(context, surfaces, "Reels", "block_reels", Config.isReelsBlocked());
+        addRow(context, surfaces, "Friends in Reels", "block_friends_lane", Config.isFriendsLaneBlocked());
         addRow(context, surfaces, "Stories", "block_stories", Config.isStoriesBlocked());
         addRow(context, surfaces, "Instants", "block_instants", Config.isInstantsBlocked());
         addRow(context, surfaces, "Notes", "block_notes", Config.isNotesBlocked());
@@ -452,6 +453,8 @@ public final class Settings {
             sub.setText("Show only accounts you follow (needs the feed unblocked).");
         } else if (key.equals("hide_toasts")) {
             sub.setText("Hide every Instagram popup, including “couldn’t refresh feed”.");
+        } else if (key.equals("block_friends_lane")) {
+            sub.setText("Hide the Friends tab and its avatars in the Reels header.");
         } else if (key.equals("block_notifications")) {
             sub.setText("Hide the notifications (heart) button in the feed header.");
         } else if (key.startsWith("nav_show_")) {

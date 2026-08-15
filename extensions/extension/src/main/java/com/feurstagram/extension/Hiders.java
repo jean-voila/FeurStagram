@@ -5,6 +5,7 @@ import android.content.res.Resources;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
+import android.widget.HorizontalScrollView;
 
 /**
  * UI-level hiders and the landing-page redirect, all installed on the main
@@ -39,6 +40,8 @@ public final class Hiders {
         observer.addOnGlobalLayoutListener(new VisibilityHider(root, "nav_show_create", true, true, null, "creation_tab"));
         observer.addOnGlobalLayoutListener(new VisibilityHider(root, "nav_show_direct", true, true, null, "direct_tab"));
         observer.addOnGlobalLayoutListener(new VisibilityHider(root, "nav_show_profile", true, true, null, "profile_tab"));
+        // "Friends" tab in the Reels viewer header.
+        observer.addOnGlobalLayoutListener(new FriendsLaneHider(root));
         // Cold-start landing-page redirect.
         observer.addOnGlobalLayoutListener(new LandingWatcher(root));
         // Skip the blocked Reels page when swiping between Home and Messages.
@@ -114,6 +117,61 @@ public final class Hiders {
                 if (id == 0) continue;
                 View view = searchRoot.findViewById(id);
                 if (view != null) view.setVisibility(visibility);
+            }
+        }
+    }
+
+    /**
+     * Hides the "Friends" tab — the friend lane, shown as a label plus a facepile
+     * of avatars next to "Reels" — from the Reels viewer's top action bar.
+     *
+     * Instagram only gates it on a server flag
+     * ({@code friends_lane_floating_pogs_entrypoint_enabled}) reachable from an
+     * internal developer menu, so there is nothing to intercept: the entry point
+     * is removed from the view tree instead.
+     *
+     * The tabs carry no per-tab resource id, so they are addressed by position:
+     * {@code clips_viewer_action_bar} holds {@code action_bar_tab_layout}, a
+     * horizontal scroller wrapping a single row with one child per tab, Reels
+     * first and any lane appended after it. Everything past the first tab is
+     * hidden, so a second lane would go with it. The search is scoped to the
+     * clips action bar because {@code action_bar_tab_layout} is a generic id
+     * reused by other tabbed surfaces.
+     */
+    static final class FriendsLaneHider implements ViewTreeObserver.OnGlobalLayoutListener {
+        private final ViewGroup root;
+
+        FriendsLaneHider(ViewGroup root) {
+            this.root = root;
+        }
+
+        @Override
+        public void onGlobalLayout() {
+            Context context = root.getContext();
+            if (context == null) return;
+            View searchRoot = root.getRootView();
+            if (searchRoot == null) searchRoot = root;
+
+            int barId = resolveId(context, "clips_viewer_action_bar");
+            if (barId == 0) return;
+            View bar = searchRoot.findViewById(barId);
+            if (bar == null) return; // not on the Reels surface right now
+
+            int tabsId = resolveId(context, "action_bar_tab_layout");
+            if (tabsId == 0) return;
+            View tabs = bar.findViewById(tabsId);
+            if (!(tabs instanceof ViewGroup)) return;
+
+            ViewGroup strip = (ViewGroup) tabs;
+            // Step through the scroller to the row that actually holds the tabs.
+            if (strip instanceof HorizontalScrollView && strip.getChildCount() == 1
+                    && strip.getChildAt(0) instanceof ViewGroup) {
+                strip = (ViewGroup) strip.getChildAt(0);
+            }
+
+            int visibility = Config.isFriendsLaneBlocked() ? View.GONE : View.VISIBLE;
+            for (int i = 1; i < strip.getChildCount(); i++) {
+                strip.getChildAt(i).setVisibility(visibility);
             }
         }
     }

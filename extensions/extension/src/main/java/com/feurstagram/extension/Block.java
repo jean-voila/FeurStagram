@@ -71,8 +71,10 @@ public final class Block {
     private static final String[] ADS = {
             "/api/v1/ads/",
             "/feed/async_ads_ranking/",
+            "/feed/contextual_multi_ads/",
             "/feed/shop_everything_feed_of_ads",
             "/feed/user_interests_contextual_feed_of_ads/",
+            "/clips/ads_discover_sync_flow/",
             "/discover/chaining_experience_contextual_ads/",
             "/discover/chaining_experience_notification_ads/",
             "/direct_v2/ads_for_ctd_ads_thread_view/",
@@ -103,7 +105,9 @@ public final class Block {
         if (Config.isAdsBlocked() && containsAny(path, ADS)) throw blocked();
 
         // --- Always-blocked analytics / commerce ---
-        if (path.contains("/feed/injected_reels_media/")
+        // No trailing slash: the family has a "_www" sibling
+        // (/feed/injected_reels_media_www/) that a slash-terminated match misses.
+        if (path.contains("/feed/injected_reels_media")
                 || path.contains("/logging/")
                 || path.contains("/async_ads_privacy/")
                 || path.contains("/async_critical_notices/")

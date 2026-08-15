@@ -119,6 +119,14 @@ public final class Config {
     public static boolean isFeedBlocked()      { return getBlocked("block_feed", true); }
     public static boolean isExploreBlocked()   { return getBlocked("block_explore", true); }
     public static boolean isReelsBlocked()     { return getBlocked("block_reels", true); }
+    /**
+     * Whether the "Friends" tab and its avatar facepile are hidden from the Reels
+     * viewer's header. On by default: Instagram gates that entry point behind a
+     * server flag ({@code friends_lane_floating_pogs_entrypoint_enabled}) only
+     * reachable from an internal developer menu, so the only way out is to drop
+     * it from the view tree — issue #94.
+     */
+    public static boolean isFriendsLaneBlocked() { return getBlocked("block_friends_lane", true); }
     public static boolean isStoriesBlocked()   { return getBlocked("block_stories", false); }
     public static boolean isInstantsBlocked()  { return getBlocked("block_instants", true); }
     public static boolean isNotesBlocked()     { return getBlocked("block_notes", true); }
@@ -178,6 +186,7 @@ public final class Config {
         baseline.put("block_feed", isFeedBlocked());
         baseline.put("block_explore", isExploreBlocked());
         baseline.put("block_reels", isReelsBlocked());
+        baseline.put("block_friends_lane", isFriendsLaneBlocked());
         baseline.put("block_stories", isStoriesBlocked());
         baseline.put("block_instants", isInstantsBlocked());
         baseline.put("block_notes", isNotesBlocked());
