@@ -176,6 +176,7 @@ of just the accounts you follow, with the recommended/ranked posts dropped.
 | **Reels in DMs** | Works |
 | **Search** | Works |
 | **Notifications** | Works |
+| **Deep links** | Works |
 
 ## Settings Page
 
@@ -187,6 +188,9 @@ main tab bar). A full-screen, scrollable settings page opens with:
 - **Feed** — *Following feed only*: restrict the Home Feed to accounts you
   follow (chronological), instead of the recommended feed. Has effect only when
   the Home Feed is left unblocked.
+- **Display** — *Force dark (disable HDR)* (on by default): stops Instagram
+  forcing its window into HDR mode, which lifts the black floor and washes out
+  the dark UI on HDR OLED screens. Turn it off to keep Instagram's HDR behaviour.
 - **Landing page** — choose which surface the app jumps to on cold start
   (Home feed, Search, Direct messages, or Profile).
 - **Updates** — *Automatic update check* (on by default): on launch,
@@ -253,6 +257,8 @@ Feurstagram/
 │   └── src/main/kotlin/com/feurstagram/patches/
 │       ├── network/              # Network blocking + feed-item filter + following-feed
 │       ├── settings/             # Long-press settings entry point (tab bar)
+│       ├── signature/            # Signing-cert trust bypass (deep links)
+│       ├── display/              # Force SDR (disable Instagram's forced HDR window)
 │       └── clone/                # Side-by-side package/label rename
 └── extensions/                   # Runtime code (Java), compiled and merged in
     └── .../com/feurstagram/extension/
@@ -260,6 +266,7 @@ Feurstagram/
         ├── LimitFeed.java        # Following-feed header rewrite
         ├── Config.java           # SharedPreferences toggles + permanent lock
         ├── Settings.java         # Settings dialog
+        ├── Display.java          # Window colour-mode control (Force dark / SDR)
         ├── Hiders.java           # Reels tab / Notes / Instants hiders + landing redirect
         └── UpdateChecker.java    # On-launch GitHub release check
 ```
@@ -317,6 +324,24 @@ and rewrites the request's `pagination_source` header from the recommended feed
 to `following`, so the Home Feed returns only accounts you follow. The header
 field is obfuscated, so it is resolved dynamically each build rather than
 hardcoded. Gated on the **Following feed only** toggle.
+
+### Deep-link signature bypass
+Instagram checks that the running APK is signed by Meta before it follows a deep
+link into its own content. A re-signed FeurStagram build fails that check, so
+shared links (posts, reels, profiles) silently dropped to the home feed. A patch
+forces Instagram's signing-certificate trust checks to always pass, so it treats
+the build as genuine and deep links resolve normally. It matches on a stable
+error string rather than obfuscated names, so it needs no per-version
+maintenance. Fixes #36 and #106.
+
+### Force SDR display
+Instagram switches its window into HDR mode at runtime (server-gated per
+account), which lifts the black floor on HDR OLED panels and leaves the flat dark
+UI looking washed out for no benefit. A patch reroutes every window colour-mode
+change through an extension helper that pins the window to SDR when the **Force
+dark** toggle is on (default), keeping blacks deep; turning it off passes
+Instagram's original colour mode through untouched. It hooks the framework
+`Window.setColorMode` call, so it too needs no per-version maintenance.
 
 #### Blocked network paths
 

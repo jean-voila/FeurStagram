@@ -108,6 +108,14 @@ public final class Config {
     }
 
     /**
+     * Whether Instagram's window is pinned to SDR (COLOR_MODE_DEFAULT) instead of
+     * the HDR mode Instagram forces on some accounts. On by default: the HDR
+     * window mode only lifts the black floor of the dark UI (washed-out fond) with
+     * no visible benefit. Not a block_* surface, so the permanent lock ignores it.
+     */
+    public static boolean isForceSdr() { return getBlocked("force_sdr", true); }
+
+    /**
      * Whether the home feed is restricted to accounts you follow (chronological
      * "Following" feed) instead of the recommended feed. Off by default. Not a
      * block_* surface, so the permanent lock never freezes it.

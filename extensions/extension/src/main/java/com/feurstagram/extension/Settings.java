@@ -173,6 +173,11 @@ public final class Settings {
         column.addView(popups);
         addRow(context, popups, "Instagram popups", "hide_toasts", Config.arePopupsHidden());
 
+        addSectionHeader(context, column, "DISPLAY");
+        LinearLayout display = makeSectionCard(context);
+        column.addView(display);
+        addRow(context, display, "Force dark (disable HDR)", "force_sdr", Config.isForceSdr());
+
         addSectionHeader(context, column, "LANDING PAGE");
         column.addView(buildLandingCard(context));
 
@@ -453,6 +458,8 @@ public final class Settings {
             sub.setText("Show only accounts you follow (needs the feed unblocked).");
         } else if (key.equals("hide_toasts")) {
             sub.setText("Hide every Instagram popup, including “couldn’t refresh feed”.");
+        } else if (key.equals("force_sdr")) {
+            sub.setText("Keep blacks deep by stopping Instagram forcing HDR on the UI.");
         } else if (key.equals("block_friends_lane")) {
             sub.setText("Hide the Friends tab and its avatars in the Reels header.");
         } else if (key.equals("block_notifications")) {
