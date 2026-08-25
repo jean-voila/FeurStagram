@@ -126,6 +126,8 @@ is an update:
 
 Just follow this account and you will get a new story on each release.
 
+Alternatively, you can get automatic updates straight from the GitHub repository using [Obtainium](https://github.com/ImranR98/Obtainium).
+
 ## Community
 
 Join the Discord server to get support, follow updates, and discuss development:
