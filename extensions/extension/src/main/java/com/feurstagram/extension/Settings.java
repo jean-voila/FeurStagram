@@ -194,7 +194,7 @@ public final class Settings {
         column.addView(checkUpdate, checkLp);
 
         // GitHub Sponsors: a calm, neutral button (not the flashy Sponsors pink).
-        Button sponsors = makeButton(context, "Donate on Github Sponsors", SURFACE_CONTAINER, ON_SURFACE, true);
+        Button sponsors = makeButton(context, "Donate on GitHub Sponsors", SURFACE_CONTAINER, ON_SURFACE, true);
         sponsors.setOnClickListener(v -> openUrl(context, "https://github.com/sponsors/jean-voila"));
         LinearLayout.LayoutParams sponsorsLp =
                 new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
