@@ -162,6 +162,7 @@ public final class Settings {
         addRow(context, nav, "Create", "nav_show_create", Config.getBlocked("nav_show_create", true));
         addRow(context, nav, "Messages", "nav_show_direct", Config.getBlocked("nav_show_direct", true));
         addRow(context, nav, "Profile", "nav_show_profile", Config.getBlocked("nav_show_profile", true));
+        addRow(context, nav, "Disable swipe navigation", "disable_swipe", Config.isSwipeDisabled());
 
         addSectionHeader(context, column, "FEED");
         LinearLayout feed = makeSectionCard(context);
@@ -457,13 +458,15 @@ public final class Settings {
         } else if (key.equals("limit_following_feed")) {
             sub.setText("Show only accounts you follow (needs the feed unblocked).");
         } else if (key.equals("hide_toasts")) {
-            sub.setText("Hide every Instagram popup, including “couldn’t refresh feed”.");
+            sub.setText("Hide every Instagram popup, including \u201ccouldn\u2019t refresh feed\u201d.");
         } else if (key.equals("force_sdr")) {
             sub.setText("Keep blacks deep by stopping Instagram forcing HDR on the UI.");
         } else if (key.equals("block_friends_lane")) {
             sub.setText("Hide the Friends tab and its avatars in the Reels header.");
         } else if (key.equals("block_notifications")) {
             sub.setText("Hide the notifications (heart) button in the feed header.");
+        } else if (key.equals("disable_swipe")) {
+            sub.setText("Prevent horizontal swiping");
         } else if (key.startsWith("nav_show_")) {
             sub.setText("Show this icon in the navigation bar.");
         } else {
