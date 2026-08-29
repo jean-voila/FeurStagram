@@ -95,9 +95,38 @@ public final class ReelsSwipeSkipper {
             Method getScrollState = pager.getClass().getMethod("getScrollState");
             Method setCurrentItem = pager.getClass().getMethod("setCurrentItem", int.class);
 
+            // Optional: only present on ViewPager2. Used by the swipe-disable toggle.
+            Method setUserInputEnabled = null;
+            try {
+                setUserInputEnabled = pager.getClass().getMethod("setUserInputEnabled", boolean.class);
+            } catch (Throwable ignored) {
+                // Not available on this Instagram build; the disable-swipe toggle will be a no-op.
+            }
+
+            // Apply swipe-disable immediately if the toggle is already on.
+            if (setUserInputEnabled != null && Config.isSwipeDisabled()) {
+                setUserInputEnabled.invoke(pager, false);
+            }
+
             Skipper skipper = new Skipper(
-                    pager, tabBar, clipsId, getCurrentItem, getScrollState, setCurrentItem);
+                    pager, tabBar, clipsId, getCurrentItem, getScrollState, setCurrentItem,
+                    setUserInputEnabled);
             pager.getViewTreeObserver().addOnScrollChangedListener(skipper);
+
+            // Re-apply swipe-disable on every layout pass, since Instagram calls
+            // setUserInputEnabled(true) again after navigation events.
+            if (setUserInputEnabled != null) {
+                final Method sue = setUserInputEnabled;
+                pager.getViewTreeObserver().addOnGlobalLayoutListener(
+                        new ViewTreeObserver.OnGlobalLayoutListener() {
+                            @Override
+                            public void onGlobalLayout() {
+                                if (!Config.isSwipeDisabled()) return;
+                                try { sue.invoke(pager, false); } catch (Throwable ignored) {}
+                            }
+                        });
+            }
+
             INSTALLED.add(pager);
             return true;
         } catch (Throwable ignored) {
@@ -119,6 +148,7 @@ public final class ReelsSwipeSkipper {
         private final Method getCurrentItem;
         private final Method getScrollState;
         private final Method setCurrentItem;
+        private final Method setUserInputEnabled; // may be null
 
         /** Last page we settled on that wasn't Reels, to infer swipe direction. */
         private int prev;
@@ -126,18 +156,27 @@ public final class ReelsSwipeSkipper {
         private boolean bouncing;
 
         Skipper(View pager, View tabBar, int clipsId,
-                Method getCurrentItem, Method getScrollState, Method setCurrentItem) {
+                Method getCurrentItem, Method getScrollState, Method setCurrentItem,
+                Method setUserInputEnabled) {
             this.pager = pager;
             this.tabBar = tabBar;
             this.clipsId = clipsId;
             this.getCurrentItem = getCurrentItem;
             this.getScrollState = getScrollState;
             this.setCurrentItem = setCurrentItem;
+            this.setUserInputEnabled = setUserInputEnabled;
             this.prev = currentItem();
         }
 
         @Override
         public void onScrollChanged() {
+            // If swipe is fully disabled, keep re-asserting it and skip the
+            // Reels-skip logic (no swipe means no page to skip over).
+            if (setUserInputEnabled != null && Config.isSwipeDisabled()) {
+                try { setUserInputEnabled.invoke(pager, false); } catch (Throwable ignored) {}
+                return;
+            }
+
             int reels = reelsIndex();
             if (reels < 0) return;
 

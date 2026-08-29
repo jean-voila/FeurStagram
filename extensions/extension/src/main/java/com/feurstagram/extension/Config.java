@@ -169,6 +169,14 @@ public final class Config {
     public static boolean isReelsTabShown() { return getBlocked("nav_show_reels", false); }
 
     /**
+     * Whether horizontal swipe between tabs is completely disabled. Off by default:
+     * most users want the skip-over-Reels behaviour rather than a full swipe lock.
+     * When enabled, setUserInputEnabled(false) is re-applied aggressively so
+     * Instagram cannot re-enable it after navigation events.
+     */
+    public static boolean isSwipeDisabled() { return getBlocked("disable_swipe", false); }
+
+    /**
      * Whether the first-run coach mark (long-press Home to open settings) has
      * already been shown on this installation. Set once, never cleared: the guide
      * is a one-time thing, not a setting.
