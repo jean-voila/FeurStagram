@@ -18,6 +18,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
@@ -119,6 +120,11 @@ public final class Settings {
         int pad = dp(context, 24);
         int top = statusBarHeight(context) + dp(context, 24);
         root.setPadding(pad, top, pad, pad);
+        root.setOnApplyWindowInsetsListener((v, insets) -> {
+            int navInset = insets.getSystemWindowInsetBottom(); // real nav bar height, thin for gesture nav, tall for 3-button
+            v.setPadding(pad, top, pad, Math.max(pad, navInset)); // never shrink below the existing fixed padding
+            return insets;
+        });
 
         ScrollView scroll = new ScrollView(context);
         LinearLayout column = new LinearLayout(context);
