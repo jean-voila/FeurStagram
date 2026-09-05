@@ -181,10 +181,17 @@ of just the accounts you follow, with the recommended/ranked posts dropped.
 ## Settings Page
 
 **Long-press the Home tab** (the house icon at the bottom-left of Instagram's
-main tab bar). A full-screen, scrollable settings page opens with:
+main tab bar). A full-screen, scrollable settings page opens — Material 3
+Expressive, monochrome, and padded to fit around system bars and cutouts on any
+device — with:
 
 - **Blocked surfaces** — toggles for Home Feed, Explore, Reels, Stories,
   Suggested accounts, Ads, Instants, and Notes.
+- **Navigation bar** — show or hide each bottom-bar icon (Search, Reels,
+  Create, Messages, Profile) independently of the content blocks. Home always
+  stays, since long-pressing it is how you get back here. A swipe that would
+  land on a hidden tab carries straight on to the next visible one, so a hidden
+  section stays hidden instead of being one flick away.
 - **Feed** — *Following feed only*: restrict the Home Feed to accounts you
   follow (chronological), instead of the recommended feed. Has effect only when
   the Home Feed is left unblocked.
@@ -192,10 +199,17 @@ main tab bar). A full-screen, scrollable settings page opens with:
   forcing its window into HDR mode, which lifts the black floor and washes out
   the dark UI on HDR OLED screens. Turn it off to keep Instagram's HDR behaviour.
 - **Landing page** — choose which surface the app jumps to on cold start
-  (Home feed, Search, Direct messages, or Profile).
-- **Updates** — *Automatic update check* (on by default): on launch,
-  Feurstagram checks GitHub for a newer release and prompts you to download it
-  if your build is out of date. Turn it off here to stop the check.
+  (Home feed, Search, Direct messages, or Profile). A surface whose navigation
+  icon is hidden can't be picked, and stops being used if you hide it later:
+  landing on it would hand back exactly what you removed.
+- **Updates** — after an update, the first launch shows a **What's new** card with
+  that version's release notes. Then, *Automatic update check* (on by default): on launch,
+  Feurstagram checks GitHub for a newer release and, if your build is out of
+  date, opens a page showing what changed in it. Choosing *Update* downloads the
+  APK on a progress page you can cancel — or leave, in which case the download
+  carries on in a notification — then hands it to Android's installer. No
+  browser, no manual download. Turn the check off here if you'd rather look
+  yourself.
 - **Donate** — opens the project's [GitHub Sponsors](https://github.com/sponsors/jean-voila) page.
 - **Permanent lock** and **Done** buttons pinned at the bottom so they stay
   reachable on any screen size.
@@ -259,6 +273,7 @@ Feurstagram/
 │       ├── settings/             # Long-press settings entry point (tab bar)
 │       ├── signature/            # Signing-cert trust bypass (deep links)
 │       ├── display/              # Force SDR (disable Instagram's forced HDR window)
+│       ├── debug/                # ADB settings bridge (dev only, --debug)
 │       └── clone/                # Side-by-side package/label rename
 └── extensions/                   # Runtime code (Java), compiled and merged in
     └── .../com/feurstagram/extension/
@@ -267,9 +282,19 @@ Feurstagram/
         ├── Config.java           # SharedPreferences toggles + permanent lock
         ├── Settings.java         # Settings dialog
         ├── Display.java          # Window colour-mode control (Force dark / SDR)
-        ├── Hiders.java           # Reels tab / Notes / Instants hiders + landing redirect
+        ├── Hiders.java           # Nav-tab / Notes / Instants hiders + landing redirect
+        ├── HiddenTabSwipeSkipper.java  # Keeps swipes off hidden tabs' pages
+        ├── DebugBridge.java      # Dev-only ADB bridge over the settings (--debug builds)
         └── UpdateChecker.java    # On-launch GitHub release check
 ```
+
+## Design
+
+Feurstagram's own screens follow Material 3 Expressive in a monochrome dark scheme —
+white is the only accent, and everything is built in code because the mod has no
+resources of its own. The tokens, shapes, type scale, component rules and the
+window-inset requirements are written down in [docs/DESIGN.md](docs/DESIGN.md); read it
+before changing or adding any UI.
 
 ## Signing
 
@@ -299,8 +324,8 @@ watcher resolves the `feed_tab` id via `Resources.getIdentifier(...)`, grabs
 the Home tab once laid out, and installs a long-press listener. Long-pressing
 opens a full-screen Material dark page: content toggles plus a landing-page
 selector, all backed by `SharedPreferences` (`feurstagram_prefs`). The same
-hook installs the Reels/Notes/Instants hiders and the cold-start landing-page
-redirect.
+hook installs the navigation-tab/Notes/Instants hiders, the hidden-tab swipe
+skipper and the cold-start landing-page redirect.
 
 ### Network Blocking
 A fingerprint matches `TigonServiceLayer.startRequest` (a named class) and

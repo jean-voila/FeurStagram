@@ -421,11 +421,13 @@ public final class Onboarding {
 
             skip = new TextView(context);
             skip.setText("Skip");
-            skip.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
+            skip.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
             skip.setTextColor(Settings.ON_SURFACE_VARIANT);
             skip.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-            int skipPad = Settings.dp(context, 12);
-            skip.setPadding(skipPad, skipPad, skipPad, skipPad);
+            skip.setBackground(Settings.outlined(context, Settings.OUTLINE_VARIANT));
+            int skipPadX = Settings.dp(context, 20);
+            int skipPadY = Settings.dp(context, 12);
+            skip.setPadding(skipPadX, skipPadY, skipPadX, skipPadY);
             skip.setOnClickListener(v -> {
                 if (onSkip != null) onSkip.run();
             });
@@ -435,23 +437,20 @@ public final class Onboarding {
         private static View buildCard(Context context) {
             LinearLayout column = new LinearLayout(context);
             column.setOrientation(LinearLayout.VERTICAL);
-            column.setBackground(Settings.roundedRect(Settings.SURFACE_CONTAINER, 20, context));
+            column.setBackground(Settings.roundedRect(Settings.SURFACE_CONTAINER, 28, context));
             int pad = Settings.dp(context, 20);
             column.setPadding(pad, pad, pad, pad);
 
             TextView title = new TextView(context);
             title.setText("Your settings live here");
-            title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 19f);
-            title.setTextColor(Settings.ON_SURFACE);
-            title.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            Settings.titleLarge(title);
             column.addView(title);
 
             TextView body = new TextView(context);
             body.setText("Press and hold the Home button below to open Feurstagram "
                     + "and choose what to block.\n\nTry it now — it's the only way in.");
+            Settings.body(body);
             body.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
-            body.setTextColor(Settings.ON_SURFACE_VARIANT);
-            body.setLineSpacing(0f, 1.15f);
             body.setPadding(0, Settings.dp(context, 10), 0, 0);
             column.addView(body);
 

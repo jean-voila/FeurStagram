@@ -44,8 +44,8 @@ public final class Hiders {
         observer.addOnGlobalLayoutListener(new FriendsLaneHider(root));
         // Cold-start landing-page redirect.
         observer.addOnGlobalLayoutListener(new LandingWatcher(root));
-        // Skip the blocked Reels page when swiping between Home and Messages.
-        ReelsSwipeSkipper.install(root);
+        // Keep swipes off the pages whose tab was hidden.
+        HiddenTabSwipeSkipper.install(root);
     }
 
     static int resolveId(Context context, String name) {

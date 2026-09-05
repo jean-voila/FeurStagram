@@ -184,8 +184,36 @@ public final class Config {
     };
 
     /** Only Reels defaults to hidden; see {@link #isReelsTabShown()}. */
-    private static boolean navDefault(String key) {
+    public static boolean navDefault(String key) {
         return !"nav_show_reels".equals(key);
+    }
+
+    /** Whether the bottom-bar icon for a {@code nav_show_*} key is currently shown. */
+    public static boolean isNavTabShown(String navKey) {
+        return getBlocked(navKey, navDefault(navKey));
+    }
+
+    /**
+     * The {@code nav_show_*} key whose icon a landing page rides on, or null for
+     * "home" (whose tab is never configurable) and for anything unrecognised.
+     */
+    public static String navKeyForLanding(String landing) {
+        if ("search".equals(landing)) return "nav_show_search";
+        if ("direct".equals(landing)) return "nav_show_direct";
+        if ("profile".equals(landing)) return "nav_show_profile";
+        return null;
+    }
+
+    /**
+     * Whether a surface may be used as the landing page. Landing on a tab that was
+     * hidden from the bottom bar would hand back the very surface the user removed —
+     * and under the permanent lock it was a way around a frozen toggle, since the
+     * landing picker was never locked (issue #116). So a hidden tab is not a
+     * candidate, lock or no lock.
+     */
+    public static boolean isLandingAvailable(String landing) {
+        String navKey = navKeyForLanding(landing);
+        return navKey == null || isNavTabShown(navKey);
     }
 
     /** Snapshot every lockable toggle's current value for the permanent lock. */
@@ -213,10 +241,20 @@ public final class Config {
      */
     public static boolean wasHiddenAtBaseline(String key) {
         Boolean captured = sBaseline == null ? null : sBaseline.get(key);
-        boolean value = captured != null
-                ? captured
-                : getBlocked(key, key != null && key.startsWith("nav_show_") && navDefault(key));
+        boolean value = captured != null ? captured : getBlocked(key, lockableDefault(key));
         return hidesSurface(key, value);
+    }
+
+    /**
+     * Default for a lockable key, used only when no baseline was captured (a write
+     * from outside the settings page). block_* falls back to false — "not blocked
+     * at baseline" — which errs on the permissive side rather than freezing a
+     * surface the user never locked.
+     */
+    private static boolean lockableDefault(String key) {
+        if (key == null) return false;
+        if (key.startsWith("nav_show_")) return navDefault(key);
+        return false;
     }
 
     /**
@@ -225,13 +263,33 @@ public final class Config {
      */
     public static String getLandingPage() {
         SharedPreferences prefs = prefs();
-        return prefs == null ? "home" : prefs.getString("landing_page", "home");
+        String stored = prefs == null ? "home" : prefs.getString("landing_page", "home");
+        // The stored choice is kept as-is so re-showing the tab restores it, but a
+        // landing page whose tab is hidden right now falls back to the home feed.
+        return isLandingAvailable(stored) ? stored : "home";
     }
 
     public static void setLandingPage(String value) {
+        if (!isLandingAvailable(value)) return;
         SharedPreferences prefs = prefs();
         if (prefs == null) return;
         prefs.edit().putString("landing_page", value).apply();
+    }
+
+    /**
+     * The app version whose release notes have already been shown, or null on a
+     * fresh install. Compared against the installed version on launch so the
+     * "What's new" card appears exactly once after an update.
+     */
+    public static String getLastSeenVersion() {
+        SharedPreferences prefs = prefs();
+        return prefs == null ? null : prefs.getString("last_seen_version", null);
+    }
+
+    public static void setLastSeenVersion(String value) {
+        SharedPreferences prefs = prefs();
+        if (prefs == null || value == null) return;
+        prefs.edit().putString("last_seen_version", value).apply();
     }
 
     public static void setNeedsRestart() { sNeedsRestart = true; }

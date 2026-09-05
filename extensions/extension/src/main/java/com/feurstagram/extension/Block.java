@@ -1,5 +1,7 @@
 package com.feurstagram.extension;
 
+import android.util.Log;
+
 import java.io.IOException;
 import java.net.URI;
 
@@ -91,6 +93,11 @@ public final class Block {
         String path = uri.getPath();
         if (path == null) return;
 
+        // Debug builds only (see DebugBridge): logs every path Instagram asks for,
+        // which is how a surface that started arriving over a new endpoint gets
+        // found. Always false in a release build.
+        if (DebugBridge.isNetworkTraceEnabled()) Log.i("FeurNet", path);
+
         // --- Toggleable content blocks ---
         if (Config.isFeedBlocked() && path.contains("/feed/timeline/")) throw blocked();
         if (Config.isStoriesBlocked() && path.contains("/feed/reels_tray")) throw blocked();
@@ -128,9 +135,15 @@ public final class Block {
      */
     public static String replaceFeedItemType(String key) {
         if (key == null) return null;
-        if (Config.isAdsBlocked() && equalsAny(key, AD_FEED_UNITS)) return INVALID_FEED_TYPE;
-        if (Config.isSuggestedBlocked() && equalsAny(key, SUGGESTED_FEED_UNITS)) return INVALID_FEED_TYPE;
-        return key;
+        boolean drop = (Config.isAdsBlocked() && equalsAny(key, AD_FEED_UNITS))
+                || (Config.isSuggestedBlocked() && equalsAny(key, SUGGESTED_FEED_UNITS));
+        // Debug builds only (see DebugBridge): shows every unit type the timeline
+        // actually contains and whether it was dropped — the way to tell a patch
+        // that no longer runs from one whose unit list is out of date.
+        if (DebugBridge.isNetworkTraceEnabled()) {
+            Log.i("FeurFeed", (drop ? "drop " : "keep ") + key);
+        }
+        return drop ? INVALID_FEED_TYPE : key;
     }
 
     private static boolean equalsAny(String value, String[] options) {

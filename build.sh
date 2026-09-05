@@ -2,12 +2,14 @@
 #
 # Feurstagram build pipeline.
 #
-#   ./build.sh <instagram.apk|.apkm|.xapk|.apks> [--clone] [--install]
+#   ./build.sh <instagram.apk|.apkm|.xapk|.apks> [--clone] [--install] [--debug]
 #
 # Builds the patch bundle (.mpp) from the Gradle project, then applies it to the
 # given Instagram APK with the local Morphe CLI, producing ./feurstagram.apk.
 #   --clone     install side-by-side as a separate package (com.instagram.android.feurstagram)
 #   --install   install the result on the connected ADB device
+#   --debug     enable the Debug bridge patch: the settings become drivable over
+#               ADB broadcasts (see extensions/.../DebugBridge.java). Never ship it.
 #
 # Split bundles: an APKMirror .apkm (or .xapk/.apks) is a zip of base.apk plus
 # split APKs. The Morphe CLI patches one APK, so those are merged into a single
@@ -27,7 +29,8 @@ set -euo pipefail
 # matches nothing makes the whole substitution fail, and `set -e` would abort the
 # script before the "not found" message it is meant to feed could ever print.
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CLI="$(ls -t "$DIR"/tools/morphe-cli-*.jar 2>/dev/null | head -1 || true)"
+# The CLI jar was renamed morphe-cli-* -> morphe-desktop-* upstream at 1.11; accept both.
+CLI="$(ls -t "$DIR"/tools/morphe-cli-*.jar "$DIR"/tools/morphe-desktop-*.jar 2>/dev/null | head -1 || true)"
 OUT="$DIR/feurstagram.apk"
 
 # Morphe's Android Gradle plugin targets JDK 17-21; pin to 21 so the build does
@@ -46,13 +49,20 @@ fi
 
 # The extension is an Android library, so the Android SDK must be locatable.
 if [ -z "${ANDROID_HOME:-}" ]; then
-    for sdk in "$HOME/Library/Android/sdk" "$HOME/Android/Sdk" "${ANDROID_SDK_ROOT:-}"; do
+    for sdk in "$HOME/Library/Android/sdk" "$HOME/Android/Sdk" \
+        "/opt/homebrew/share/android-commandlinetools" "/usr/local/share/android-commandlinetools" \
+        "${ANDROID_SDK_ROOT:-}"; do
         if [ -n "$sdk" ] && { [ -d "$sdk/platform-tools" ] || [ -d "$sdk/build-tools" ]; }; then
             export ANDROID_HOME="$sdk"
             break
         fi
     done
 fi
+
+# Run every JVM tool with the pinned JDK rather than whatever `java` is on PATH
+# (Homebrew often puts a JDK 17 there, which the patcher rejects).
+JAVA_BIN="${JAVA_HOME:+$JAVA_HOME/bin/java}"
+JAVA_BIN="${JAVA_BIN:-java}"
 
 # Signing material. apksigner ships with the Android SDK build-tools.
 KEYSTORE="${FEURSTAGRAM_KEYSTORE:-$DIR/feurstagram.keystore}"
@@ -65,20 +75,22 @@ fi
 APK=""
 CLONE=0
 INSTALL=0
+DEBUG=0
 for arg in "$@"; do
     case "$arg" in
         --clone) CLONE=1 ;;
         --install) INSTALL=1 ;;
+        --debug) DEBUG=1 ;;
         *) APK="$arg" ;;
     esac
 done
 
 if [ -z "$APK" ] || [ ! -f "$APK" ]; then
-    echo "usage: ./build.sh <instagram.apk|.apkm|.xapk|.apks> [--clone] [--install]" >&2
+    echo "usage: ./build.sh <instagram.apk|.apkm|.xapk|.apks> [--clone] [--install] [--debug]" >&2
     exit 1
 fi
 if [ -z "$CLI" ]; then
-    echo "Error: Morphe CLI not found under tools/ (morphe-cli-*.jar)." >&2
+    echo "Error: Morphe CLI not found under tools/ (morphe-cli-*.jar / morphe-desktop-*.jar)." >&2
     exit 1
 fi
 
@@ -101,7 +113,7 @@ case "$APK" in
             # The bundle holds base.apk plus feature/density splits; -f overwrites
             # a stale merge. Instagram's is ~400 MB, so give the JVM room. The
             # per-file merge log is noisy, so keep it on disk rather than inline.
-            if ! java -Xmx4g -jar "$EDITOR" m -f -i "$APK" -o "$MERGED" > "$MERGED.log" 2>&1; then
+            if ! "$JAVA_BIN" -Xmx4g -jar "$EDITOR" m -f -i "$APK" -o "$MERGED" > "$MERGED.log" 2>&1; then
                 echo "Error: APKEditor failed to merge $(basename "$APK")." >&2
                 echo "       Log: $MERGED.log" >&2
                 exit 1
@@ -122,8 +134,13 @@ fi
 echo "    bundle: $MPP"
 
 echo "==> [2/3] Applying to $(basename "$APK")"
-ARGS=(-jar "$CLI" patch -p "$MPP" -f --purge -o "$OUT")
+# Scratch files are purged by default in the CLI; -r writes a JSON report of each
+# patch step so a fingerprint that stopped matching is visible instead of silent.
+REPORT="$DIR/build/patch-report.json"
+mkdir -p "$DIR/build"
+ARGS=(-jar "$CLI" patch -p "$MPP" -f -r "$REPORT" -o "$OUT")
 [ "$CLONE" -eq 1 ] && ARGS+=(-e "Clone")
+[ "$DEBUG" -eq 1 ] && ARGS+=(-e "Debug bridge")
 
 # With a keystore password, defer signing to apksigner (the CLI can't read the
 # PKCS12 keystore); otherwise let the CLI sign with a throwaway key for testing.
@@ -143,7 +160,7 @@ if [ -n "${FEURSTAGRAM_KEYSTORE_PASS:-}" ]; then
     ARGS+=(--unsigned)
 fi
 ARGS+=("$APK")
-java "${ARGS[@]}"
+"$JAVA_BIN" "${ARGS[@]}"
 
 if [ "$SIGN_WITH_APKSIGNER" -eq 1 ]; then
     echo "    signing with apksigner ($(basename "$KEYSTORE"), alias $KEY_ALIAS)"
@@ -166,7 +183,22 @@ if [ "$SIGN_WITH_APKSIGNER" -eq 1 ]; then
         | grep -i "SHA-256" | head -1 | sed 's/^/    cert /' || true
 fi
 
+# Surface which patches actually applied. The CLI aborts on the first failure, so
+# this is mostly a receipt — but a fingerprint that quietly stopped matching on a
+# new Instagram build is exactly the regression that shipped as issue #117.
+if [ -f "$REPORT" ] && command -v python3 >/dev/null 2>&1; then
+    python3 - "$REPORT" <<'EOF' || true
+import json, sys
+report = json.load(open(sys.argv[1]))
+for patch in report.get("appliedPatches", []):
+    print(f"    ok   {patch.get('name')}")
+for patch in report.get("failedPatches", []):
+    print(f"    FAIL {patch.get('name')}: {patch.get('exception') or patch.get('error') or ''}")
+EOF
+fi
+
 echo "==> [3/3] Output: $OUT"
+[ "$DEBUG" -eq 1 ] && echo "    !! debug build: settings are drivable over ADB broadcasts — do not release"
 if [ "$INSTALL" -eq 1 ]; then
     echo "    installing on device..."
     adb install -r "$OUT"

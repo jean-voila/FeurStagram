@@ -1,5 +1,6 @@
 # Build outputs
 *.apk
+*.apkm
 *.idsig
 *.mpe
 *.mpp

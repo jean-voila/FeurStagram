@@ -21,15 +21,19 @@ private const val BLOCK_CLASS = "Lcom/feurstagram/extension/Block;"
 // strings, not obfuscated code names) plus the non-obfuscated method name
 // fragment "parseFromJson", so it survives Instagram renaming the class/method
 // to LX/ hex between releases.
+//
+// Keep this list *short*. Every token is a hard requirement, so one unit type
+// Instagram retires takes the whole patch down with it: "in_feed_survey" was
+// dropped from the parser in Instagram 444 and silently killed all inline
+// ad/netego filtering (issue #117). These four are the load-bearing ones — the
+// regular post wrapper, the two netego families and the ad unit — and the method
+// name keeps it apart from the serialiser, which carries the same tokens.
 internal object FeedItemParseFromJsonFingerprint : Fingerprint(
     strings = listOf(
+        "media_or_ad",
         "clips_netego",
         "stories_netego",
-        "bloks_netego",
-        "in_feed_survey",
-        "suggested_users",
-        "suggested_top_accounts",
-        "suggested_igd_channels",
+        "ad4ad",
     ),
     custom = { method, _ -> method.name.lowercase().contains("parsefromjson") },
 )
