@@ -1,7 +1,10 @@
 package com.feurstagram.extension;
 
+import android.app.Activity;
+import android.app.Application;
 import android.content.Context;
 import android.content.res.Resources;
+import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
@@ -40,12 +43,89 @@ public final class Hiders {
         observer.addOnGlobalLayoutListener(new VisibilityHider(root, "nav_show_create", true, true, null, "creation_tab"));
         observer.addOnGlobalLayoutListener(new VisibilityHider(root, "nav_show_direct", true, true, null, "direct_tab"));
         observer.addOnGlobalLayoutListener(new VisibilityHider(root, "nav_show_profile", true, true, null, "profile_tab"));
+        // Profile post grid: the tab-bar hider covers the main Activity. A separate
+        // ActivityLifecycleCallbacks registered here covers every other Activity in
+        // the process (DM-profile, follower/following sheets, etc.) which the tab-bar
+        // ViewTreeObserver never reaches.
+        observer.addOnGlobalLayoutListener(new VisibilityHider(root, "block_profile_grid",
+                false, false, null,
+                "profile_viewpager", "profile_tabs_container"));
+        registerProfileGridLifecycleHook(root.getContext());
+        // Search post results. Hides the tabbed results pane (For you / Accounts /
+        // Not personalised tabs + the post grid below them). The account suggestions
+        // that appear while typing live in a separate recycler_view above tabbed_pager
+        // and are unaffected. Off by default (opt-in).
+        observer.addOnGlobalLayoutListener(new VisibilityHider(root, "block_search_posts",
+                false, false, null,
+                "tabbed_pager", "search_tab_bar_layout"));
         // "Friends" tab in the Reels viewer header.
         observer.addOnGlobalLayoutListener(new FriendsLaneHider(root));
         // Cold-start landing-page redirect.
         observer.addOnGlobalLayoutListener(new LandingWatcher(root));
         // Skip the blocked Reels page when swiping between Home and Messages.
         ReelsSwipeSkipper.install(root);
+    }
+
+    /**
+     * Registers a one-time {@link Application.ActivityLifecycleCallbacks} that
+     * installs a {@link VisibilityHider} for the profile grid on every Activity
+     * that the process opens. This covers Activities that have no tab bar —
+     * notably the profile page opened from the DM inbox — which the tab-bar
+     * {@link ViewTreeObserver} never reaches.
+     *
+     * Safe to call multiple times: a static flag ensures the callback is
+     * registered at most once per process lifetime.
+     */
+    private static volatile boolean sLifecycleHookRegistered = false;
+
+    private static void registerProfileGridLifecycleHook(Context context) {
+        if (sLifecycleHookRegistered) return;
+        if (context == null) return;
+        Context app = context.getApplicationContext();
+        if (!(app instanceof Application)) return;
+        ((Application) app).registerActivityLifecycleCallbacks(new ProfileGridActivityHook());
+        sLifecycleHookRegistered = true;
+    }
+
+    /**
+     * Installs a {@link VisibilityHider} for {@code profile_viewpager} and
+     * {@code profile_tabs_container} on every Activity that resumes. The hider
+     * is attached to the Activity's root {@link ViewGroup} (found via
+     * {@code coordinator_root_layout}, which is present in both the main feed
+     * Activity and the standalone profile Activity opened from DMs). If that
+     * container is not in the window the hider is a no-op for that Activity.
+     *
+     * Only {@link #onActivityResumed} is used; all other callbacks are empty.
+     */
+    static final class ProfileGridActivityHook implements Application.ActivityLifecycleCallbacks {
+
+        @Override
+        public void onActivityResumed(Activity activity) {
+            if (activity == null) return;
+            // Find a stable high-level container to anchor the listener on.
+            // coordinator_root_layout is present in both the main Activity and
+            // the DM-profile Activity (confirmed via uiautomator dumps).
+            View decorView = activity.getWindow().getDecorView();
+            if (!(decorView instanceof ViewGroup)) return;
+            ViewGroup decor = (ViewGroup) decorView;
+
+            // Avoid adding duplicate listeners if the Activity resumes repeatedly.
+            Object tag = decor.getTag(0x66727374); // "frst" — unique sentinel, outside Instagram's 0x7f resource range
+            if (Boolean.TRUE.equals(tag)) return;
+            decor.setTag(0x66727374, Boolean.TRUE);
+
+            decor.getViewTreeObserver().addOnGlobalLayoutListener(
+                    new VisibilityHider(decor, "block_profile_grid",
+                            false, false, null,
+                            "profile_viewpager", "profile_tabs_container"));
+        }
+
+        @Override public void onActivityCreated(Activity a, Bundle b) {}
+        @Override public void onActivityStarted(Activity a) {}
+        @Override public void onActivityPaused(Activity a) {}
+        @Override public void onActivityStopped(Activity a) {}
+        @Override public void onActivitySaveInstanceState(Activity a, Bundle b) {}
+        @Override public void onActivityDestroyed(Activity a) {}
     }
 
     static int resolveId(Context context, String name) {

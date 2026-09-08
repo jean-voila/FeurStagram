@@ -153,6 +153,8 @@ public final class Settings {
         addRow(context, surfaces, "Suggested accounts", "block_suggested", Config.isSuggestedBlocked());
         addRow(context, surfaces, "Ads", "block_ads", Config.isAdsBlocked());
         addRow(context, surfaces, "Notifications button", "block_notifications", Config.isNotificationsButtonBlocked());
+        addRow(context, surfaces, "Profile post grid", "block_profile_grid", Config.isProfileGridBlocked());
+        addRow(context, surfaces, "Search post results", "block_search_posts", Config.isSearchPostsBlocked());
 
         addSectionHeader(context, column, "NAVIGATION BAR");
         LinearLayout nav = makeSectionCard(context);
@@ -203,7 +205,7 @@ public final class Settings {
         column.addView(sponsors, sponsorsLp);
 
         // Buy Me a Coffee: brand yellow (#FFDD00) with black text, coffee-cup glyph.
-        Button coffee = makeButton(context, "☕  Buy me a coffee!",
+        Button coffee = makeButton(context, "\u2615  Buy me a coffee!",
                 Color.parseColor("#FFDD00"), Color.parseColor("#000000"), true);
         coffee.setOnClickListener(v -> openUrl(context, "https://buymeacoffee.com/jean_voila"));
         LinearLayout.LayoutParams coffeeLp =
@@ -467,6 +469,10 @@ public final class Settings {
             sub.setText("Hide the notifications (heart) button in the feed header.");
         } else if (key.equals("disable_swipe")) {
             sub.setText("Prevent horizontal swiping");
+        } else if (key.equals("block_profile_grid")) {
+            sub.setText("Hide posts on every profile page.");
+        } else if (key.equals("block_search_posts")) {
+            sub.setText("Hide post results when searching");
         } else if (key.startsWith("nav_show_")) {
             sub.setText("Show this icon in the navigation bar.");
         } else {

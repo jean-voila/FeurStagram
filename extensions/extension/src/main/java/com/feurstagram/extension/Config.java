@@ -149,6 +149,24 @@ public final class Config {
     public static boolean isNotificationsButtonBlocked() { return getBlocked("block_notifications", false); }
 
     /**
+     * Whether the post grid on all profile pages is hidden. Covers the main grid
+     * and the tab bar above it (Grid / Photos of You icons). Off by default: opt-in,
+     * since this affects the user's own profile grid too.
+     */
+    public static boolean isProfileGridBlocked() { return getBlocked("block_profile_grid", false); }
+
+    /**
+     * Whether the tabbed post-results pane on the search page is hidden. Covers
+     * the "For you / Accounts / Not personalised / Audio" tab bar
+     * ({@code search_tab_bar_layout}) and the post grid below it
+     * ({@code tabbed_pager}). The account suggestions that appear while typing
+     * live in a separate recycler_view above {@code tabbed_pager} and are
+     * unaffected. Off by default: opt-in, since many users still use Search to
+     * find accounts.
+     */
+    public static boolean isSearchPostsBlocked() { return getBlocked("block_search_posts", false); }
+
+    /**
      * Whether Instagram's popups (its own toasts: "Couldn't refresh feed",
      * "Impossible d'actualiser le fil", ...) are dropped. On by default: blocking
      * a surface makes Instagram see a failed request and raise one every time, so
@@ -208,6 +226,8 @@ public final class Config {
         baseline.put("block_notes", isNotesBlocked());
         baseline.put("block_suggested", isSuggestedBlocked());
         baseline.put("block_ads", isAdsBlocked());
+        baseline.put("block_profile_grid", isProfileGridBlocked());
+        baseline.put("block_search_posts", isSearchPostsBlocked());
         for (String key : NAV_KEYS) {
             baseline.put(key, getBlocked(key, navDefault(key)));
         }
