@@ -6,6 +6,41 @@ All notable changes to Feurstagram should be documented in this file.
 
 Nothing yet.
 
+## v446-0-0-49-77
+
+### Added
+- **Follow the official account.** The first launch after installing or updating
+  FeurStagram shows a card inviting the user to follow
+  [@feurstagram_official](https://www.instagram.com/feurstagram_official/), where every
+  release is announced. *Follow* opens the profile inside the app, *Not now* closes it.
+  "After an install or update" is read from the package's `lastUpdateTime`, not its
+  versionName, so a re-release on the same Instagram base counts too; it is shown once per
+  install or update, and the "What's new" card only runs once it has been dismissed.
+- **Website: Instagram without Reels pages, guides and a press kit.** A landing page for
+  "Instagram without Reels" comparing the ways to hide Reels, guides (removing Reels on
+  Android, Instagram without the feed, DFInstagram alternative, Feurstagram vs ScrollGuard vs
+  WallHabit, the EU's findings on Instagram's addictive design), a press kit, a French
+  version of the main pages, structured data, `hreflang` pairs and a `sitemap.xml`.
+- The website shows the total download count, loaded from GitHub when the page opens, and
+  the official contact address, feurstagram@gmail.com.
+
+### Fixed
+- **Deep links keep working on Instagram 446.** Instagram 446 reshaped the family-app scope
+  trust check that the signature-check bypass disables: the static
+  `boolean(KeyHash, KeyHash, Z)` became an instance method taking the caller identity and
+  reading both key hashes from it. The patch failed to apply, which would have sent shared
+  posts, reels and profiles back to the home feed. It now matches either form, the new one by
+  structure alone.
+- The website's canonical and Open Graph URLs pointed at `/Feurstagram/`, which returns 404 on
+  GitHub Pages; they now use `/FeurStagram/`.
+
+### Changed
+- **The settings page opens with an animation.** Long-pressing Home now brings the
+  Feurstagram settings page in with a short rise-and-fade instead of it appearing at once.
+- Updated to Instagram 446.0.0.49.77.
+- The README's download badge shows the total number of downloads, and the README lists the
+  official contact address.
+
 ## v445-0-0-45-83
 
 ### Fixed

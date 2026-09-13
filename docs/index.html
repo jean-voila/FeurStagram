@@ -9,36 +9,73 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Feurstagram - Distraction-Free Instagram</title>
+    <title>Feurstagram: Instagram without Reels, Feed or Ads (Android)</title>
 
     <!-- SEO Meta Tags -->
     <meta name="description"
-        content="Feurstagram removes addictive features from Instagram. Block the feed, explore, and reels while keeping stories, DMs, and profiles. Free and open-source alternative to DFInstagram.">
-    <meta name="keywords"
-        content="Instagram, distraction-free, focus, productivity, no feed, block reels, Android, APK, open source, DFInstagram, DFInstagram alternative, digital wellbeing, screen time, dopamine detox, mindful social media, Instagram mod, Instagram patch, no explore, block feed, social media addiction, digital minimalism, less phone, phone detox, intentional technology, focus app, anti-distraction, wellness, mental health, doomscrolling, stop scrolling">
-    <meta name="author" content="jean-voila">
-    <meta name="robots" content="index, follow">
-    <link rel="canonical" href="https://jean-voila.github.io/Feurstagram/">
+        content="Feurstagram is Instagram without Reels for Android: a free, open-source app that removes Reels, the feed, Explore and ads while keeping DMs and stories.">
+    <meta name="robots" content="index, follow, max-image-preview:large">
+    <link rel="canonical" href="https://jean-voila.github.io/FeurStagram/">
+    <link rel="alternate" hreflang="en" href="https://jean-voila.github.io/FeurStagram/">
+    <link rel="alternate" hreflang="fr" href="https://jean-voila.github.io/FeurStagram/fr/">
+    <link rel="alternate" hreflang="x-default" href="https://jean-voila.github.io/FeurStagram/">
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://jean-voila.github.io/Feurstagram/">
-    <meta property="og:title" content="Feurstagram - Distraction-Free Instagram">
+    <meta property="og:site_name" content="Feurstagram">
+    <meta property="og:url" content="https://jean-voila.github.io/FeurStagram/">
+    <meta property="og:title" content="Feurstagram: Instagram without Reels">
     <meta property="og:description"
-        content="Remove addictive features from Instagram. Keep messaging, stories, and profiles — block the endless feed.">
-    <meta property="og:image" content="https://jean-voila.github.io/Feurstagram/preview.png">
+        content="No Reels, no endless feed, no ads. Messages, stories and profiles stay. Free and open source for Android.">
+    <meta property="og:image" content="https://jean-voila.github.io/FeurStagram/preview.png">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:locale:alternate" content="fr_FR">
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="https://jean-voila.github.io/Feurstagram/">
-    <meta name="twitter:title" content="Feurstagram - Distraction-Free Instagram">
+    <meta name="twitter:url" content="https://jean-voila.github.io/FeurStagram/">
+    <meta name="twitter:title" content="Feurstagram: Instagram without Reels">
     <meta name="twitter:description"
-        content="Remove addictive features from Instagram. Keep messaging, stories, and profiles — block the endless feed.">
-    <meta name="twitter:image" content="https://jean-voila.github.io/Feurstagram/preview.png">
+        content="No Reels, no endless feed, no ads. Messages, stories and profiles stay. Free and open source for Android.">
+    <meta name="twitter:image" content="https://jean-voila.github.io/FeurStagram/preview.png">
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="app_icon.png">
-    <link rel="apple-touch-icon" href="app_icon.png">
+    <link rel="icon" type="image/png" href="assets/img/icon-256.png">
+    <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+    <link rel="preload" as="image" href="assets/img/icon-256.webp" type="image/webp">
+
+    <script type="application/ld+json">
+    [{
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Feurstagram",
+        "alternateName": "Instagram without Reels",
+        "operatingSystem": "Android",
+        "applicationCategory": "LifestyleApplication",
+        "description": "Free, open-source patch for the official Instagram Android app that removes Reels, the home feed, Explore, suggested accounts, ads and telemetry while keeping direct messages, stories, search, profiles and notifications.",
+        "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "downloadUrl": "https://github.com/jean-voila/FeurStagram/releases/latest",
+        "screenshot": "https://jean-voila.github.io/FeurStagram/assets/img/after.png",
+        "author": { "@type": "Person", "name": "jean-voila", "url": "https://github.com/jean-voila" },
+        "sameAs": ["https://github.com/jean-voila/FeurStagram", "https://www.instagram.com/feurstagram_official/"]
+    }, {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Feurstagram",
+        "url": "https://jean-voila.github.io/FeurStagram/",
+        "inLanguage": "en"
+    }, {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Feurstagram",
+        "url": "https://jean-voila.github.io/FeurStagram/",
+        "logo": "https://jean-voila.github.io/FeurStagram/app_icon.png",
+        "email": "feurstagram@gmail.com",
+        "sameAs": ["https://github.com/jean-voila/FeurStagram", "https://www.instagram.com/feurstagram_official/", "https://discord.gg/Z9QvMw8s76"]
+    }]
+    </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -155,6 +192,41 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+        }
+
+        .hero h1 .h1-sub {
+            display: block;
+            font-size: 0.42em;
+            letter-spacing: -0.01em;
+            margin-top: 8px;
+        }
+
+        .downloads-total {
+            margin-top: 18px;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .downloads-total strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .guide-card {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .contact-line {
+            margin-top: 14px;
+            color: var(--text-tertiary);
+            font-size: 0.9rem;
+        }
+
+        .contact-line a {
+            color: var(--text-secondary);
         }
 
         .hero .tagline {
@@ -555,10 +627,9 @@
 
     <main>
         <section class="hero">
-            <img src="app_icon.png" alt="Feurstagram Icon" class="app-icon" draggable="false">
-            <h1>Feurstagram</h1>
-            <p class="tagline">Distraction-Free Instagram. Keep messaging, stories, and profiles — remove the endless
-                feed.</p>
+            <img src="assets/img/icon-256.webp" alt="Feurstagram icon" class="app-icon" width="120" height="120" draggable="false">
+            <h1>Feurstagram<span class="h1-sub">Instagram without Reels</span></h1>
+            <p class="tagline">Instagram for Android without Reels, the endless feed, Explore or ads. Keep messaging, stories, and profiles.</p>
 
             <div class="button-group">
                 <div class="download-controls">
@@ -592,14 +663,19 @@
                     Source Code
                 </a>
             </div>
+            <p class="downloads-total" data-downloads-wrap hidden><strong data-total-downloads></strong> downloads</p>
             <nav class="quick-links" aria-label="Project links">
+                <a href="instagram-without-reels/">Instagram without Reels</a>
                 <a href="https://github.com/jean-voila/Feurstagram/releases/latest">Latest release</a>
                 <a href="https://github.com/jean-voila/Feurstagram/blob/main/docs/INSTALL.md">Installation guide</a>
                 <a href="https://github.com/jean-voila/Feurstagram/blob/main/docs/BUILD_FROM_SOURCE.md">Build from source</a>
                 <a href="https://github.com/jean-voila/Feurstagram/blob/main/docs/FAQ.md">FAQ</a>
                 <a href="https://github.com/jean-voila/Feurstagram/issues">GitHub issues</a>
+                <a href="press/">Press kit</a>
+                <a href="fr/" hreflang="fr" lang="fr">Français</a>
                 <a href="https://buymeacoffee.com/jean_voila" onclick="gtag('event', 'buy_me_a_coffee_nav');">Buy me a coffee</a>
             </nav>
+            <p class="contact-line">Contact: <a href="mailto:feurstagram@gmail.com">feurstagram@gmail.com</a></p>
             <div class="discord-cta">
                 <a href="https://discord.gg/Z9QvMw8s76" class="btn btn-discord" id="btn-discord" target="_blank"
                     rel="noopener" onclick="gtag('event', 'join_discord');">
@@ -625,7 +701,7 @@
                     </span>
                 </a>
             </div>
-            <p class="developed-by">Developed with ♥ by <span id="contributors-list">loading contributors...</span></p>
+            <p class="developed-by">Developed with ♥ by <a href="https://github.com/jean-voila" target="_blank" rel="noopener">jean-voila</a></p>
         </section>
 
         <section class="features container">
@@ -707,7 +783,7 @@
 
                 <div class="feature-card">
                     <h3>Open patches</h3>
-                    <p>The patch scripts and smali changes are public, so you can inspect what is changed before installing anything.</p>
+                    <p>Every patch is public, so you can inspect what is changed before installing anything.</p>
                 </div>
 
                 <div class="feature-card">
@@ -759,6 +835,40 @@
                 </div>
             </div>
         </section>
+
+        <section class="info-section container" aria-labelledby="guides-title">
+            <div class="section-header">
+                <h2 id="guides-title">Guides</h2>
+                <p>How to use Instagram without Reels, the feed or ads on Android.</p>
+            </div>
+
+            <div class="info-grid">
+                <a class="feature-card guide-card" href="instagram-without-reels/">
+                    <h3>Instagram without Reels</h3>
+                    <p>Instagram has no setting to turn off Reels. Five ways to use it without them, compared.</p>
+                </a>
+                <a class="feature-card guide-card" href="how-to-remove-reels-from-instagram-android/">
+                    <h3>How to remove Reels on Android</h3>
+                    <p>Every option, from Instagram's own settings to removing the Reels tab.</p>
+                </a>
+                <a class="feature-card guide-card" href="instagram-without-feed/">
+                    <h3>Instagram without the feed</h3>
+                    <p>Keep only direct messages and stories.</p>
+                </a>
+                <a class="feature-card guide-card" href="dfinstagram-alternative/">
+                    <h3>DFInstagram alternative</h3>
+                    <p>A maintained, open-source distraction-free Instagram.</p>
+                </a>
+                <a class="feature-card guide-card" href="feurstagram-vs-scrollguard-vs-wallhabit/">
+                    <h3>Feurstagram vs ScrollGuard vs WallHabit</h3>
+                    <p>Patched app or blocker app: which one fits you.</p>
+                </a>
+                <a class="feature-card guide-card" href="instagram-addictive-design-eu/">
+                    <h3>What the EU found</h3>
+                    <p>Instagram's addictive design under the Digital Services Act.</p>
+                </a>
+            </div>
+        </section>
     </main>
 
     <footer>
@@ -770,12 +880,18 @@
             <a href="https://buymeacoffee.com/jean_voila" target="_blank" rel="noopener"
                 onclick="gtag('event', 'buy_me_a_coffee_footer');">Buy me a coffee</a>
         </p>
+        <p>
+            <a href="mailto:feurstagram@gmail.com">feurstagram@gmail.com</a> •
+            <a href="press/">Press kit</a> •
+            <a href="fr/" hreflang="fr" lang="fr">Français</a>
+        </p>
     </footer>
 
     <script data-name="BMC-Widget" data-cfasync="false" src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js"
         data-id="jean_voila" data-description="Support me on Buy me a coffee!" data-message=""
         data-color="#FFDD00" data-position="Right" data-x_margin="18" data-y_margin="18"></script>
 
+    <script src="assets/site.js"></script>
     <script>
         const FALLBACK_RELEASE_URL = 'https://github.com/jean-voila/Feurstagram/releases/latest';
 
@@ -871,14 +987,18 @@
             }
         }
 
-        // Fetch latest release from GitHub
+        // Latest release, from the release list assets/site.js loads once per session
+        // (the same request also gives the total download count).
         async function fetchLatestRelease() {
             try {
-                const response = await fetch('https://api.github.com/repos/jean-voila/Feurstagram/releases/latest');
-                const data = await response.json();
+                const summary = await window.feurstagramReleases;
+                const data = summary && summary.latest;
+                if (!data) {
+                    throw new Error('No published release');
+                }
 
-                const version = data.tag_name;
-                const date = new Date(data.published_at);
+                const version = data.tag;
+                const date = new Date(data.publishedAt);
                 const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
                 // Update button text
@@ -892,7 +1012,10 @@
                 }
 
                 // Update download link to direct APK
-                latestApkAssets = getApkAssets(data.assets);
+                latestApkAssets = getApkAssets(data.assets.map((asset) => ({
+                    name: asset.name,
+                    browser_download_url: asset.url
+                })));
                 updateDownloadButtons();
             } catch (error) {
                 const releaseInfoStandard = document.getElementById('release-info-standard');
@@ -908,32 +1031,8 @@
             }
         }
 
-        async function fetchContributors() {
-            const contributorsEl = document.getElementById('contributors-list');
-            if (!contributorsEl) {
-                return;
-            }
-
-            try {
-                const response = await fetch('https://api.github.com/repos/jean-voila/Feurstagram/contributors?per_page=100');
-                const contributors = await response.json();
-
-                if (!Array.isArray(contributors) || contributors.length === 0) {
-                    contributorsEl.textContent = 'the contributors';
-                    return;
-                }
-
-                contributorsEl.innerHTML = contributors
-                    .map((contributor) => `<a href="${contributor.html_url}" target="_blank" rel="noopener">${contributor.login}</a>`)
-                    .join(', ');
-            } catch (error) {
-                contributorsEl.textContent = 'the contributors';
-            }
-        }
-
         updateDownloadButtons();
         fetchLatestRelease();
-        fetchContributors();
     </script>
 </body>
 

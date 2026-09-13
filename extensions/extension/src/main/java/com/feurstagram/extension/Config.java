@@ -292,6 +292,22 @@ public final class Config {
         prefs.edit().putString("last_seen_version", value).apply();
     }
 
+    /**
+     * The package {@code lastUpdateTime} the "follow the official account" card was
+     * last shown for, or 0 if never. A different value on launch means the app was
+     * installed or updated since, so the card is due again.
+     */
+    public static long getFollowPromptShownFor() {
+        SharedPreferences prefs = prefs();
+        return prefs == null ? 0L : prefs.getLong("follow_prompt_update_time", 0L);
+    }
+
+    public static void setFollowPromptShownFor(long updateTime) {
+        SharedPreferences prefs = prefs();
+        if (prefs == null) return;
+        prefs.edit().putLong("follow_prompt_update_time", updateTime).apply();
+    }
+
     public static void setNeedsRestart() { sNeedsRestart = true; }
 
     public static boolean isRestartPending() { return sNeedsRestart; }

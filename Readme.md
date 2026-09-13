@@ -1,17 +1,18 @@
 <div align="center">
   <img src="docs/app_icon.png" alt="Feurstagram logo" width="128" height="128">
   <h1>Feurstagram</h1>
-  <p><strong>Instagram, without the addictive surfaces.</strong></p>
+  <p><strong>Instagram without Reels, feed, Explore or ads.</strong></p>
   <p>
-    Feurstagram is an open-source Android patch for Instagram that removes
-    the feed, Explore, Reels, ads, telemetry, and other distracting features
-    while keeping DMs, stories, search, notifications, and profiles.
+    Feurstagram is <a href="https://jean-voila.github.io/FeurStagram/instagram-without-reels/">Instagram without Reels</a>:
+    an open-source patch for the official Android app that removes the feed,
+    Reels, Explore, ads and telemetry, while keeping DMs, stories, search,
+    notifications and profiles.
   </p>
 </div>
 
 <p align="center">
   <a href="https://github.com/jean-voila/Feurstagram/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/jean-voila/Feurstagram?style=flat-square&label=release&color=10a37f"></a>
-  <a href="https://github.com/jean-voila/Feurstagram/releases/latest"><img alt="Download APK" src="https://img.shields.io/badge/download-APK-10a37f?style=flat-square"></a>
+  <a href="https://github.com/jean-voila/Feurstagram/releases/latest"><img alt="Download APK, total downloads" src="https://img.shields.io/github/downloads/jean-voila/FeurStagram/total?style=flat-square&label=Download%20APK&color=10a37f"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/jean-voila/Feurstagram?style=flat-square&color=6b7280"></a>
   <a href="https://discord.gg/Z9QvMw8s76"><img alt="Discord" src="https://img.shields.io/badge/discord-community-5865F2?style=flat-square&logo=discord&logoColor=white"></a>
   <a href="https://www.instagram.com/feurstagram_official/"><img alt="Instagram updates" src="https://img.shields.io/badge/instagram-updates-E4405F?style=flat-square&logo=instagram&logoColor=white"></a>
@@ -131,6 +132,10 @@ Just follow this account and you will get a new story on each release.
 Join the Discord server to get support, follow updates, and discuss development:
 
 - https://discord.gg/Z9QvMw8s76
+
+## Contact
+
+Official email: **[feurstagram@gmail.com](mailto:feurstagram@gmail.com)**. Journalists can find facts, screenshots and logos in the [press kit](https://jean-voila.github.io/FeurStagram/press/).
 
 ## Installation
 

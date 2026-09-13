@@ -7,6 +7,9 @@ import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import com.android.tools.smali.dexlib2.AccessFlags
+import com.android.tools.smali.dexlib2.iface.Method
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.feurstagram.patches.shared.Constants.COMPATIBILITY_INSTAGRAM
 
 /**
@@ -16,6 +19,10 @@ import com.feurstagram.patches.shared.Constants.COMPATIBILITY_INSTAGRAM
  *
  *   - X.1eX.A01(keyHash)          -> keyHash in allowlist
  *   - X.1eY.A01(keyHash, ref, z)  -> family-app scope trust (with the same allowlist fallback)
+ *
+ * Instagram 446 reshaped the second one into an instance method on the trusted-provider class
+ * that takes the caller identity and reads the key hashes from it, so the patch matches either
+ * form.
  *
  * Re-signing the APK produces a key hash that is not in the allowlist, so both checks fail,
  * X.0XS.A02 (the "is this APK signed by Meta" gate) turns false, and Instagram's deep-link
@@ -58,12 +65,36 @@ val signatureCheckBypassPatch = bytecodePatch(
             custom = { method, _ -> AccessFlags.STATIC.isSet(method.accessFlags) },
         ).method.replaceBodyToReturnTrue("X.1eX.A01 signature allowlist check")
 
-        // Only one method with signature boolean(X.3uq, X.3uq, Z): X.1eY.A01, the family-app
-        // scope trust check used by the deep-link resolver (com.facebook.secure.deeplink).
-        Fingerprint(
+        // The family-app scope trust check used by the deep-link resolver
+        // (com.facebook.secure.deeplink). Up to Instagram 445 it is the only method with
+        // signature boolean(X.3uq, X.3uq, Z) (X.1eY.A01).
+        val legacyScopeCheck = Fingerprint(
             returnType = "Z",
             parameters = listOf(keyHashType, keyHashType, "Z"),
             custom = { method, _ -> AccessFlags.STATIC.isSet(method.accessFlags) },
-        ).method.replaceBodyToReturnTrue("X.1eY.A01 signature scope check")
+        ).methodOrNull
+
+        // From Instagram 446 it became an instance method boolean(CallerIdentity, Z) on the
+        // trusted-provider class, which reads both key hashes from the caller identity
+        // (a getter on its first parameter) instead of taking them as parameters. That shape
+        // is unique in the APK; the class's own "*|all_packages|*" string is not, so it is
+        // matched on structure alone.
+        val scopeCheck = legacyScopeCheck ?: Fingerprint(
+            returnType = "Z",
+            custom = { method, _ ->
+                !AccessFlags.STATIC.isSet(method.accessFlags) &&
+                    method.parameterTypes.size == 2 &&
+                    method.parameterTypes[1].toString() == "Z" &&
+                    method.readsKeyHashFrom(method.parameterTypes[0].toString(), keyHashType)
+            },
+        ).method
+        scopeCheck.replaceBodyToReturnTrue("Signature scope check")
     }
 }
+
+/** True if the method calls a getter declared on [ownerType] that returns the key-hash type. */
+private fun Method.readsKeyHashFrom(ownerType: String, keyHashType: String): Boolean =
+    implementation?.instructions?.any { instruction ->
+        val reference = (instruction as? ReferenceInstruction)?.reference as? MethodReference
+        reference != null && reference.returnType == keyHashType && reference.definingClass == ownerType
+    } ?: false

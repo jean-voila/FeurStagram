@@ -22,6 +22,7 @@ import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -110,7 +111,9 @@ public final class Settings {
         tabBar.getViewTreeObserver().addOnGlobalLayoutListener(new HomeTabWatcher(tabBar));
         Hiders.installAll(tabBar);
         Context activity = getActivityContext(tabBar);
-        UpdateChecker.checkWhatsNew(activity);
+        // The follow card comes first after an install or update; "What's new"
+        // waits until it is dismissed.
+        FollowPrompt.maybeShow(activity, () -> UpdateChecker.checkWhatsNew(activity));
         UpdateChecker.check(activity);
     }
 
@@ -125,12 +128,30 @@ public final class Settings {
         return cursor != null ? cursor : context;
     }
 
+    /** How far the settings page rises while it opens. */
+    private static final int OPEN_RISE_DP = 32;
+    /** Length of the settings page's opening animation. */
+    private static final long OPEN_DURATION_MS = 280L;
+
     public static void show(Context context) {
         if (context == null) return;
         try {
             Dialog dialog = new Dialog(context, android.R.style.Theme_Material_NoActionBar);
             dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-            dialog.setContentView(buildContent(context, dialog));
+            View content = buildContent(context, dialog);
+            dialog.setContentView(content);
+
+            // Opening animation: the page rises and fades in over Instagram. The window
+            // itself stays transparent (the page paints its own background), so what is
+            // behind shows through until the page has settled.
+            content.setAlpha(0f);
+            content.setTranslationY(dp(context, OPEN_RISE_DP));
+            dialog.setOnShowListener(d -> content.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(OPEN_DURATION_MS)
+                    .setInterpolator(new DecelerateInterpolator(2f))
+                    .start());
 
             // Intercept Back (incl. predictive-back gesture) to restart on change.
             dialog.setOnCancelListener(d -> {
@@ -139,7 +160,7 @@ public final class Settings {
                 }
             });
 
-            styleWindow(dialog, SURFACE, 0f);
+            styleWindow(dialog, Color.TRANSPARENT, 0f);
             dialog.show();
         } catch (Throwable t) {
             Toast.makeText(context, "Feurstagram settings unavailable here", Toast.LENGTH_LONG).show();
