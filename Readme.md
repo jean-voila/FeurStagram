@@ -203,6 +203,10 @@ device — with:
 - **Display** — *Force dark (disable HDR)* (on by default): stops Instagram
   forcing its window into HDR mode, which lifts the black floor and washes out
   the dark UI on HDR OLED screens. Turn it off to keep Instagram's HDR behaviour.
+- **Privacy** — *Allow screenshots* (off by default): strips FLAG_SECURE from
+  Instagram's windows so screenshots and screen recordings work in view-once
+  media and disappearing DMs, and drops the screenshot-taken report so the
+  sender is not notified.
 - **Landing page** — choose which surface the app jumps to on cold start
   (Home feed, Search, Direct messages, or Profile). A surface whose navigation
   icon is hidden can't be picked, and stops being used if you hide it later:
@@ -278,6 +282,7 @@ Feurstagram/
 │       ├── settings/             # Long-press settings entry point (tab bar)
 │       ├── signature/            # Signing-cert trust bypass (deep links)
 │       ├── display/              # Force SDR (disable Instagram's forced HDR window)
+│       ├── screenshot/           # Screenshot bypass (strip FLAG_SECURE, gated on toggle)
 │       ├── debug/                # ADB settings bridge (dev only, --debug)
 │       └── clone/                # Side-by-side package/label rename
 └── extensions/                   # Runtime code (Java), compiled and merged in
@@ -287,6 +292,7 @@ Feurstagram/
         ├── Config.java           # SharedPreferences toggles + permanent lock
         ├── Settings.java         # Settings dialog
         ├── Display.java          # Window colour-mode control (Force dark / SDR)
+        ├── Screenshots.java      # Window flag control (Allow screenshots bypass)
         ├── Hiders.java           # Nav-tab / Notes / Instants hiders + landing redirect
         ├── HiddenTabSwipeSkipper.java  # Keeps swipes off hidden tabs' pages
         ├── DebugBridge.java      # Dev-only ADB bridge over the settings (--debug builds)

@@ -4,7 +4,11 @@ All notable changes to Feurstagram should be documented in this file.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+- **Allow screenshots** toggle (Settings → Privacy, off by default): strips
+  FLAG_SECURE from Instagram's windows so screenshots and screen recordings
+  work in view-once media and disappearing DMs, forces recents thumbnails on,
+  and drops the screenshot-taken report so the sender is not notified.
 
 ## v446-0-0-49-77
 
