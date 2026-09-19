@@ -111,6 +111,13 @@ public final class Block {
         if (Config.isSuggestedBlocked() && containsAny(path, SUGGESTED)) throw blocked();
         if (Config.isAdsBlocked() && containsAny(path, ADS)) throw blocked();
 
+        // Screenshot bypass: drop the "screenshot taken" report Instagram sends
+        // to the other side for disappearing DMs and view-once media
+        // (direct_v2/threads/<id>/ephemeral_screenshot/), so the sender is not
+        // notified. The local FLAG_SECURE enforcement is stripped separately by
+        // the screenshot-bypass patch (see Screenshots).
+        if (Config.isScreenshotBypassEnabled() && path.contains("/ephemeral_screenshot/")) throw blocked();
+
         // --- Always-blocked analytics / commerce ---
         // No trailing slash: the family has a "_www" sibling
         // (/feed/injected_reels_media_www/) that a slash-terminated match misses.

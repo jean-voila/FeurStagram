@@ -116,6 +116,16 @@ public final class Config {
     public static boolean isForceSdr() { return getBlocked("force_sdr", true); }
 
     /**
+     * Whether screenshots and screen recordings are allowed in sensitive
+     * surfaces (view-once media, disappearing DMs): FLAG_SECURE is stripped
+     * from Instagram's windows, recents thumbnails are forced on, and the
+     * screenshot-taken report to the sender is dropped (see {@link Block}).
+     * Off by default: it changes what the other side can observe, so it is
+     * strictly opt-in. Not a block_* surface, so the permanent lock ignores it.
+     */
+    public static boolean isScreenshotBypassEnabled() { return getBlocked("allow_screenshots", false); }
+
+    /**
      * Whether the home feed is restricted to accounts you follow (chronological
      * "Following" feed) instead of the recommended feed. Off by default. Not a
      * block_* surface, so the permanent lock never freezes it.

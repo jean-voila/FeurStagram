@@ -472,6 +472,11 @@ public final class Settings {
         addRow(context, display, "Force dark (disable HDR)", "force_sdr", Config.isForceSdr());
         sealGroup(context, display);
 
+        LinearLayout privacy = addSection(context, column, "Privacy");
+        addRow(context, privacy, "Allow screenshots", "allow_screenshots",
+                Config.isScreenshotBypassEnabled());
+        sealGroup(context, privacy);
+
         LinearLayout landing = addSection(context, column, "Landing page");
         buildLandingOptions(context, landing, landingSync);
         sealGroup(context, landing);
@@ -829,6 +834,7 @@ public final class Settings {
         if (key.equals("limit_following_feed")) return "Show only accounts you follow (needs the feed unblocked).";
         if (key.equals("hide_toasts")) return "Hide every Instagram popup, including “couldn’t refresh feed”.";
         if (key.equals("force_sdr")) return "Keep blacks deep by stopping Instagram forcing HDR on the UI.";
+        if (key.equals("allow_screenshots")) return "Screenshot view-once media and DMs; the sender is not notified.";
         if (key.equals("block_friends_lane")) return "Hide the Friends tab and its avatars in the Reels header.";
         if (key.equals("block_notifications")) return "Hide the notifications (heart) button in the feed header.";
         if (key.startsWith("nav_show_")) return "Show this icon in the navigation bar.";
