@@ -44,9 +44,9 @@ private fun ReferenceInstruction.reroute(): Reroute? {
  * untouched otherwise.
  *
  * All three targets are framework API, so the match is by stable framework
- * method references — no obfuscated Instagram name is involved and the patch
- * needs no per-version maintenance. `invoke-*/range` variants are left alone;
- * Instagram's call sites use the fixed-register form.
+ * method references: no obfuscated Instagram name is involved and the patch
+ * needs no per-version maintenance. Range-form invokes are skipped, not
+ * rewritten; Instagram's call sites use the fixed-register form.
  */
 @Suppress("unused")
 val screenshotBypassPatch = bytecodePatch(
@@ -88,16 +88,18 @@ val screenshotBypassPatch = bytecodePatch(
                 }
 
                 for ((index, kind, insn) in targets) {
+                    // No whitespace inside the parameter list: the inline
+                    // smali parser rejects `(L...; II)V` with a space in it.
                     val replacement = when (kind) {
                         Reroute.ADD_FLAGS ->
                             "invoke-static { v${insn.registerC}, v${insn.registerD} }, " +
-                                "$SCREENSHOTS_CLASS->addFlags($WINDOW I)V"
+                                "$SCREENSHOTS_CLASS->addFlags(${WINDOW}I)V"
                         Reroute.SET_FLAGS ->
                             "invoke-static { v${insn.registerC}, v${insn.registerD}, " +
-                                "v${insn.registerE} }, $SCREENSHOTS_CLASS->setFlags($WINDOW II)V"
+                                "v${insn.registerE} }, $SCREENSHOTS_CLASS->setFlags(${WINDOW}II)V"
                         Reroute.RECENTS ->
                             "invoke-static { v${insn.registerC}, v${insn.registerD} }, " +
-                                "$SCREENSHOTS_CLASS->setRecentsScreenshotEnabled($ACTIVITY Z)V"
+                                "$SCREENSHOTS_CLASS->setRecentsScreenshotEnabled(${ACTIVITY}Z)V"
                     }
                     method.replaceInstruction(index, replacement)
                 }
