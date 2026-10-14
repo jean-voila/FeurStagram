@@ -41,8 +41,11 @@ you inspect the patches and avoid trusting a prebuilt APK.
 
 The bundle is signed during the build. Set `FEURSTAGRAM_KEYSTORE_PASS` (and
 optionally `FEURSTAGRAM_KEY_PASS`) to sign with `feurstagram.keystore`;
-otherwise a throwaway keystore is generated. Do not commit your keystore, and
-keep the same one to reinstall without losing app data.
+otherwise Morphe signs with a throwaway key for testing. When a release
+keystore is configured, the build signs with Android SDK `apksigner`; all build
+outputs are then verified with `apksigner` and their certificate fingerprint
+is printed. Do not commit your release keystore, and keep using the same one to
+reinstall without losing app data.
 
 ## Notes
 

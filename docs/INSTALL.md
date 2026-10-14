@@ -31,6 +31,14 @@ If you prefer not to trust a prebuilt APK, follow the [build-from-source guide](
 ### Android blocks the installation
 
 Enable installation from unknown sources for your browser or file manager.
+This permission is separate from APK signature validation.
+
+### Android says the APK is missing a developer certificate
+
+Delete the incomplete download and download the APK again directly from the
+official GitHub Releases page. If Android still reports a missing certificate,
+do not try to bypass device security settings; report the exact release asset,
+device model, Android version, and the full installer message.
 
 ### The app does not install
 
