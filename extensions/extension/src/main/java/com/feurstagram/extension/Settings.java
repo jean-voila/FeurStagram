@@ -445,6 +445,10 @@ public final class Settings {
                 Config.isNotificationsButtonBlocked());
         sealGroup(context, surfaces);
 
+        LinearLayout reels = addSection(context, column, "Reels");
+        addRow(context, reels, "Lock viewer swipe", "lock_reel_swipe", Config.isReelSwipeLocked());
+        sealGroup(context, reels);
+
         // Hiding a nav icon also takes its surface out of the landing-page picker,
         // so the two sections have to stay in step while the panel is open.
         final Runnable[] landingSync = new Runnable[1];
@@ -830,6 +834,7 @@ public final class Settings {
         if (key.equals("hide_toasts")) return "Hide every Instagram popup, including “couldn’t refresh feed”.";
         if (key.equals("force_sdr")) return "Keep blacks deep by stopping Instagram forcing HDR on the UI.";
         if (key.equals("block_friends_lane")) return "Hide the Friends tab and its avatars in the Reels header.";
+        if (key.equals("lock_reel_swipe")) return "Stop swiping between reels (needs the reels unlocked)";
         if (key.equals("block_notifications")) return "Hide the notifications (heart) button in the feed header.";
         if (key.startsWith("nav_show_")) return "Show this icon in the navigation bar.";
         return "Hide this surface in Instagram.";
