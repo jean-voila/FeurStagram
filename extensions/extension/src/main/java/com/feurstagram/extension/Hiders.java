@@ -40,6 +40,9 @@ public final class Hiders {
         observer.addOnGlobalLayoutListener(new VisibilityHider(root, "nav_show_create", true, true, null, "creation_tab"));
         observer.addOnGlobalLayoutListener(new VisibilityHider(root, "nav_show_direct", true, true, null, "direct_tab"));
         observer.addOnGlobalLayoutListener(new VisibilityHider(root, "nav_show_profile", true, true, null, "profile_tab"));
+        // Optional "Saved" button, riding on the Reels slot. Added after the Reels
+        // hider, which stands down for clips_tab while this is on.
+        observer.addOnGlobalLayoutListener(new SavedTabHook(root));
         // "Friends" tab in the Reels viewer header.
         observer.addOnGlobalLayoutListener(new FriendsLaneHider(root));
         // Cold-start landing-page redirect.
@@ -109,6 +112,10 @@ public final class Hiders {
                 if (scopeView == null) return; // container not on this screen; leave everything alone
                 searchRoot = scopeView;
             }
+            // The Reels slot belongs to the Saved button while it is on. Without
+            // this the two listeners would flip clips_tab GONE/VISIBLE on every
+            // pass, and each flip triggers another layout pass.
+            if ("nav_show_reels".equals(key) && Config.isSavedButtonEnabled()) return;
             boolean pref = Config.getBlocked(key, defaultValue);
             boolean hidden = invert ? !pref : pref; // invert: pref true = shown
             int visibility = hidden ? View.GONE : View.VISIBLE;
@@ -118,6 +125,32 @@ public final class Hiders {
                 View view = searchRoot.findViewById(id);
                 if (view != null) view.setVisibility(visibility);
             }
+        }
+    }
+
+    /**
+     * Keeps the Reels slot dressed as the Saved button while that option is on
+     * (see {@link SavedButton}). Off, it does nothing and the Reels hider owns the
+     * slot again; the settings page restarts the app on Done, so a slot already
+     * re-skinned in this process never has to be undone in place.
+     */
+    static final class SavedTabHook implements ViewTreeObserver.OnGlobalLayoutListener {
+        private final ViewGroup root;
+
+        SavedTabHook(ViewGroup root) {
+            this.root = root;
+        }
+
+        @Override
+        public void onGlobalLayout() {
+            if (!Config.isSavedButtonEnabled()) return;
+            Context context = root.getContext();
+            if (context == null) return;
+            int id = resolveId(context, "clips_tab");
+            if (id == 0) return; // slot renamed or gone in this build: no button, no crash
+            View tab = root.getRootView().findViewById(id);
+            if (tab == null) return;
+            SavedButton.apply(tab);
         }
     }
 

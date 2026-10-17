@@ -169,6 +169,32 @@ public final class Config {
     public static boolean isReelsTabShown() { return getBlocked("nav_show_reels", false); }
 
     /**
+     * Whether the Reels slot of the bottom bar is turned into a "Saved" button that
+     * opens the saved-posts screen. Off by default. Deliberately not a
+     * {@code nav_show_*} key: it starts off, so the permanent lock would freeze it
+     * off for good, and it reveals the user's own bookmarks rather than a feed.
+     * While it is on, the Reels icon's own toggle no longer applies (see
+     * {@link Hiders.SavedTabHook}).
+     */
+    public static boolean isSavedButtonEnabled() { return getBlocked("saved_button", false); }
+
+    /**
+     * Deep link the Saved button opens. Instagram's router (451.0.0.53.80) maps it
+     * to {@code com.instagram.urlhandlers.saved.SavedUrlHandlerActivity} with the
+     * {@code SAME_APP} access scope: honoured when the app opens it itself,
+     * dropped (lands on the feed) when another app or adb does. See
+     * docs/SAVED_BUTTON.md. Overridable without a rebuild through the debug
+     * bridge: {@code SET --es key saved_uri --es value <uri>}.
+     */
+    public static final String DEFAULT_SAVED_URI = "instagram://saved";
+
+    public static String getSavedUri() {
+        SharedPreferences prefs = prefs();
+        String stored = prefs == null ? null : prefs.getString("saved_uri", null);
+        return stored == null || stored.isEmpty() ? DEFAULT_SAVED_URI : stored;
+    }
+
+    /**
      * Whether the first-run coach mark (long-press Home to open settings) has
      * already been shown on this installation. Set once, never cleared: the guide
      * is a one-time thing, not a setting.

@@ -270,11 +270,15 @@ public final class HiddenTabSwipeSkipper {
         /**
          * Whether a tab is somewhere the user may land. Hidden tabs are out, and
          * so is Create: it opens the camera rather than a page, so jumping onto it
-         * would swap a hidden surface for a full-screen composer.
+         * would swap a hidden surface for a full-screen composer. The Reels slot
+         * is out while it serves as the Saved button: it is visible, but its page
+         * behind it is still Reels.
          */
         private boolean isReachable(View tab) {
             if (tab == null || tab.getVisibility() != View.VISIBLE) return false;
-            return !"creation_tab".equals(entryName(tab));
+            String name = entryName(tab);
+            if ("clips_tab".equals(name) && Config.isSavedButtonEnabled()) return false;
+            return !"creation_tab".equals(name);
         }
 
         private String entryName(View view) {

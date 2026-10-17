@@ -197,6 +197,8 @@ device — with:
   stays, since long-pressing it is how you get back here. A swipe that would
   land on a hidden tab carries straight on to the next visible one, so a hidden
   section stays hidden instead of being one flick away.
+  *Saved* (off by default) turns the Reels slot into a shortcut to your saved
+  posts; the Reels page behind it stays unreachable by tap or swipe.
 - **Feed** — *Following feed only*: restrict the Home Feed to accounts you
   follow (chronological), instead of the recommended feed. Has effect only when
   the Home Feed is left unblocked.
@@ -289,6 +291,7 @@ Feurstagram/
         ├── Display.java          # Window colour-mode control (Force dark / SDR)
         ├── Hiders.java           # Nav-tab / Notes / Instants hiders + landing redirect
         ├── HiddenTabSwipeSkipper.java  # Keeps swipes off hidden tabs' pages
+        ├── SavedButton.java      # Optional Saved shortcut in the Reels slot
         ├── DebugBridge.java      # Dev-only ADB bridge over the settings (--debug builds)
         └── UpdateChecker.java    # On-launch GitHub release check
 ```
@@ -372,6 +375,15 @@ change through an extension helper that pins the window to SDR when the **Force
 dark** toggle is on (default), keeping blacks deep; turning it off passes
 Instagram's original colour mode through untouched. It hooks the framework
 `Window.setColorMode` call, so it too needs no per-version maintenance.
+
+### Saved home deep link
+Instagram has two Saved screens: the tabbed one the profile menu opens, and an
+older collections-only one. The `instagram://saved` deep link, which the optional
+Saved button opens, always built the older one. A patch points it at the same
+factory the menu uses, so both open the tabbed screen whenever Instagram's own
+server-side gate allows it. The factory and the call it replaces are found by
+structure and by the screen's `saved_tabbed_home` module name, not by obfuscated
+names.
 
 #### Blocked network paths
 

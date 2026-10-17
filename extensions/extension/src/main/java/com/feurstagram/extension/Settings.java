@@ -460,7 +460,16 @@ public final class Settings {
 
         LinearLayout nav = addSection(context, column, "Navigation bar");
         addRow(context, nav, "Search", "nav_show_search", Config.getBlocked("nav_show_search", true), onNavChanged);
-        addRow(context, nav, "Reels", "nav_show_reels", Config.getBlocked("nav_show_reels", false), onNavChanged);
+        final LinearLayout reelsRow = addRow(context, nav, "Reels", "nav_show_reels",
+                Config.getBlocked("nav_show_reels", false), onNavChanged);
+        // Saved takes over the Reels slot, so the Reels icon toggle stands idle
+        // while it is on.
+        final boolean reelsFrozen = !reelsRow.isEnabled();
+        Runnable syncReels = () -> {
+            if (!reelsFrozen) setRowEnabled(reelsRow, !Config.isSavedButtonEnabled());
+        };
+        addRow(context, nav, "Saved", "saved_button", Config.isSavedButtonEnabled(), syncReels);
+        syncReels.run();
         addRow(context, nav, "Create", "nav_show_create", Config.getBlocked("nav_show_create", true), onNavChanged);
         addRow(context, nav, "Messages", "nav_show_direct", Config.getBlocked("nav_show_direct", true), onNavChanged);
         addRow(context, nav, "Profile", "nav_show_profile", Config.getBlocked("nav_show_profile", true), onNavChanged);
@@ -785,16 +794,17 @@ public final class Settings {
         return row;
     }
 
-    private static void addRow(Context context, LinearLayout parent, String label, String key, boolean value) {
-        addRow(context, parent, label, key, value, null);
+    private static LinearLayout addRow(Context context, LinearLayout parent, String label, String key, boolean value) {
+        return addRow(context, parent, label, key, value, null);
     }
 
     /**
      * @param onChanged run after the preference is written, for rows another
      *                  section depends on (the nav icons drive the landing picker)
+     * @return the row, for callers that grey it out from another row
      */
-    private static void addRow(Context context, LinearLayout parent, String label, String key,
-                               boolean value, Runnable onChanged) {
+    private static LinearLayout addRow(Context context, LinearLayout parent, String label, String key,
+                                       boolean value, Runnable onChanged) {
         LinearLayout row = makeRow(context, parent, label, supportText(key));
 
         Switch toggle = new Switch(context);
@@ -827,9 +837,21 @@ public final class Settings {
             row.setClickable(false);
             row.setAlpha(0.38f);
         }
+        return row;
+    }
+
+    /** Grey a row and its control out (or back in), at the M3 disabled opacity. */
+    private static void setRowEnabled(LinearLayout row, boolean enabled) {
+        for (int i = 0; i < row.getChildCount(); i++) {
+            row.getChildAt(i).setEnabled(enabled);
+        }
+        row.setEnabled(enabled);
+        row.setClickable(enabled);
+        row.setAlpha(enabled ? 1f : 0.38f);
     }
 
     private static String supportText(String key) {
+        if (key.equals("saved_button")) return "Replace the Reels icon with a shortcut to your saved posts.";
         if (key.equals("auto_update")) return "Check GitHub for a new version on launch.";
         if (key.equals("block_ads")) return "Block sponsored ads across Instagram.";
         if (key.equals("limit_following_feed")) return "Show only accounts you follow (needs the feed unblocked).";
