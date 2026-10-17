@@ -373,6 +373,10 @@ dark** toggle is on (default), keeping blacks deep; turning it off passes
 Instagram's original colour mode through untouched. It hooks the framework
 `Window.setColorMode` call, so it too needs no per-version maintenance.
 
+Suggested accounts mixed into the story tray are not a separate request: they arrive as
+`reel_type: "suggested_user"` entries of the tray response itself. A parse-layer hook drops
+them when *Suggested accounts* is blocked, the same way feed ads are filtered.
+
 #### Blocked network paths
 
 | Path / pattern | Purpose | Toggleable |

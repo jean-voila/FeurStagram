@@ -195,6 +195,38 @@ public final class Block {
         return drop ? null : media;
     }
 
+    /**
+     * Name of the story-tray model's getter for {@code reel_type}. Obfuscated and
+     * renamed every release, so the patch rewrites this body with the name it
+     * finds in the model's serializer.
+     */
+    static String trayEntryTypeGetter() {
+        return "";
+    }
+
+    /**
+     * Story-tray hook: called with every entry Instagram's tray parser builds.
+     * Returns null for a suggested account ({@code reel_type} "suggested_user")
+     * when suggestions are blocked; the tray loop already skips entries that
+     * parse to null, so the suggestion never reaches the tray. These come inside
+     * the tray response itself, so the network block cannot catch them.
+     */
+    public static Object filterTrayEntry(Object entry) {
+        if (entry == null || !Config.isSuggestedBlocked()) return entry;
+        try {
+            String getter = trayEntryTypeGetter();
+            if (getter.isEmpty()) return entry;
+            Object type = entry.getClass().getMethod(getter).invoke(entry);
+            boolean drop = "suggested_user".equals(String.valueOf(type));
+            if (DebugBridge.isNetworkTraceEnabled()) {
+                Log.i("FeurTray", (drop ? "drop " : "keep ") + type);
+            }
+            return drop ? null : entry;
+        } catch (Throwable t) {
+            return entry; // never break the tray over a shape we did not expect
+        }
+    }
+
     private static boolean equalsAny(String value, String[] options) {
         for (String option : options) {
             if (option.equals(value)) return true;

@@ -4,7 +4,12 @@ All notable changes to Feurstagram should be documented in this file.
 
 ## Unreleased
 
-Nothing yet.
+### Fixed
+- **Suggested accounts no longer fill the story tray.** Instagram mixes suggested
+  accounts into the home story tray as ordinary entries of the tray response (typed
+  `suggested_user`), so blocking the suggestion endpoints did not catch them: on a test
+  account, 12 of the 19 tray entries were suggestions. They are now dropped as the tray
+  is parsed when *Suggested accounts* is blocked, and come back when it is turned off.
 
 ## v451-0-0-20-80
 
