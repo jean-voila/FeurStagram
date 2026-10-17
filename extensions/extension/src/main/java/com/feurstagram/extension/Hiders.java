@@ -31,6 +31,8 @@ public final class Hiders {
         // an unscoped search could hide that badge instead.
         observer.addOnGlobalLayoutListener(new VisibilityHider(root, "block_notifications",
                 false, false, "action_bar_buttons_container_right", "notification"));
+        // Threads button in the profile header. Opt-in (default visible).
+        observer.addOnGlobalLayoutListener(new ThreadsButtonHider(root));
         // Bottom-navigation icons, each shown/hidden independently. These use the
         // inverted "nav_show_<tab>" preference (true = shown). Home is intentionally
         // absent: long-pressing it opens Settings, so it must stay visible. Reels
@@ -117,6 +119,49 @@ public final class Hiders {
                 if (id == 0) continue;
                 View view = searchRoot.findViewById(id);
                 if (view != null) view.setVisibility(visibility);
+            }
+        }
+    }
+
+    /**
+     * Hides the Threads button from the profile header's right-hand buttons.
+     *
+     * The button has no resource id of its own: it is a bare ImageView inside
+     * {@code right_action_bar_buttons}, next to the options (menu) button. It is
+     * told apart by its content description, which names Threads in every
+     * language Instagram ships ("View Threads profile", "Ver perfil en Threads"),
+     * since the brand is not translated. The search is scoped to
+     * {@code profile_action_bar}, so nothing outside the profile header is
+     * touched; the options button never matches and always stays.
+     */
+    static final class ThreadsButtonHider implements ViewTreeObserver.OnGlobalLayoutListener {
+        private static final String BRAND = "Threads";
+        private final ViewGroup root;
+
+        ThreadsButtonHider(ViewGroup root) {
+            this.root = root;
+        }
+
+        @Override
+        public void onGlobalLayout() {
+            Context context = root.getContext();
+            if (context == null) return;
+            View window = root.getRootView();
+            if (window == null) return;
+            int barId = resolveId(context, "profile_action_bar");
+            View bar = barId == 0 ? null : window.findViewById(barId);
+            if (bar == null) return; // not on a profile screen
+            int buttonsId = resolveId(context, "right_action_bar_buttons");
+            View buttons = buttonsId == 0 ? null : bar.findViewById(buttonsId);
+            if (!(buttons instanceof ViewGroup)) return;
+
+            int visibility = Config.isThreadsButtonBlocked() ? View.GONE : View.VISIBLE;
+            ViewGroup group = (ViewGroup) buttons;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                View child = group.getChildAt(i);
+                CharSequence description = child.getContentDescription();
+                if (description == null || !description.toString().contains(BRAND)) continue;
+                if (child.getVisibility() != visibility) child.setVisibility(visibility);
             }
         }
     }

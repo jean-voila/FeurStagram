@@ -191,7 +191,8 @@ Expressive, monochrome, and padded to fit around system bars and cutouts on any
 device — with:
 
 - **Blocked surfaces** — toggles for Home Feed, Explore, Reels, Stories,
-  Suggested accounts, Ads, Instants, and Notes.
+  Suggested accounts, Ads, Instants, and Notes, plus the notifications (heart)
+  button in the feed header and the Threads button in your profile header.
 - **Navigation bar** — show or hide each bottom-bar icon (Search, Reels,
   Create, Messages, Profile) independently of the content blocks. Home always
   stays, since long-pressing it is how you get back here. A swipe that would

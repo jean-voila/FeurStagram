@@ -149,6 +149,12 @@ public final class Config {
     public static boolean isNotificationsButtonBlocked() { return getBlocked("block_notifications", false); }
 
     /**
+     * Whether the Threads button in the profile header is hidden. Opt-in (default
+     * visible), like the notifications button.
+     */
+    public static boolean isThreadsButtonBlocked() { return getBlocked("block_threads_button", false); }
+
+    /**
      * Whether Instagram's popups (its own toasts: "Couldn't refresh feed",
      * "Impossible d'actualiser le fil", ...) are dropped. On by default: blocking
      * a surface makes Instagram see a failed request and raise one every time, so

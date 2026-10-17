@@ -443,6 +443,8 @@ public final class Settings {
         addRow(context, surfaces, "Ads", "block_ads", Config.isAdsBlocked());
         addRow(context, surfaces, "Notifications button", "block_notifications",
                 Config.isNotificationsButtonBlocked());
+        addRow(context, surfaces, "Threads button", "block_threads_button",
+                Config.isThreadsButtonBlocked());
         sealGroup(context, surfaces);
 
         // Hiding a nav icon also takes its surface out of the landing-page picker,
@@ -831,6 +833,7 @@ public final class Settings {
         if (key.equals("force_sdr")) return "Keep blacks deep by stopping Instagram forcing HDR on the UI.";
         if (key.equals("block_friends_lane")) return "Hide the Friends tab and its avatars in the Reels header.";
         if (key.equals("block_notifications")) return "Hide the notifications (heart) button in the feed header.";
+        if (key.equals("block_threads_button")) return "Hide the Threads button in your profile header.";
         if (key.startsWith("nav_show_")) return "Show this icon in the navigation bar.";
         return "Hide this surface in Instagram.";
     }

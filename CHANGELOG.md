@@ -4,7 +4,11 @@ All notable changes to Feurstagram should be documented in this file.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+- **Threads button toggle.** *Settings → Blocked surfaces → Threads button* (off by
+  default) hides the Threads shortcut from the top of your profile. The button has no
+  resource id, so it is found inside the profile header by its description, which names
+  Threads in every language.
 
 ## v451-0-0-20-80
 
