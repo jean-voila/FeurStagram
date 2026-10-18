@@ -127,6 +127,7 @@ public final class Config {
     public static boolean isFeedBlocked()      { return getBlocked("block_feed", true); }
     public static boolean isExploreBlocked()   { return getBlocked("block_explore", true); }
     public static boolean isReelsBlocked()     { return getBlocked("block_reels", true); }
+    public static boolean isReelSwipeLocked() { return getBlocked("lock_reel_swipe", false); }
     /**
      * Whether the "Friends" tab and its avatar facepile are hidden from the Reels
      * viewer's header. On by default: Instagram gates that entry point behind a
