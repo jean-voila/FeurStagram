@@ -161,12 +161,48 @@ public final class Config {
     /**
      * Bottom-navigation icon visibility, stored per tab as {@code nav_show_<tab>}
      * (true = shown). Independent of the content blocks, so hiding the Reels
-     * *icon* is decoupled from blocking Reels *content*. Home is deliberately not
-     * configurable: long-pressing it is the only Settings entry point, so it must
-     * stay present and tappable. Reels defaults to hidden to preserve the previous
-     * behaviour (blocking reels used to also hide the tab).
+     * *icon* is decoupled from blocking Reels *content*. Reels defaults to hidden
+     * to preserve the previous behaviour (blocking reels used to also hide the tab).
      */
     public static boolean isReelsTabShown() { return getBlocked("nav_show_reels", false); }
+
+    /**
+     * Whether the Home icon is on the bar (issue #127). Long-pressing a tab is the
+     * only way into the settings: with Home hidden the gesture moves to the first
+     * icon left on the bar, so Home only goes once another icon is there to take
+     * it over — hiding every icon keeps Home, or the settings would be unreachable.
+     */
+    public static boolean isHomeTabShown() {
+        if (isQuoicouviewEnabled()) return false; // Messages, always shown, takes over
+        if (getBlocked("nav_show_home", true)) return true;
+        for (String key : NAV_KEYS) {
+            if (!"nav_show_home".equals(key) && getBlocked(key, navDefault(key))) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Quoicouview mode (experimental, off by default): Messages is the main page,
+     * with the stories tray on top of it, and Home is off. While it is on, Home
+     * counts as hidden, Messages as shown and the landing page is Messages,
+     * whatever their own settings say; those are kept and apply again once the
+     * mode is turned off. Not a block_* surface, so the permanent lock does not
+     * freeze it, but it cannot bring back a Messages icon the lock keeps hidden:
+     * the mode simply does not apply then. See {@link Quoicouview}.
+     */
+    public static boolean isQuoicouviewEnabled() {
+        return getBlocked("quoicouview_mode", false) && isQuoicouviewAvailable();
+    }
+
+    /** False while the permanent lock keeps the Messages icon hidden. */
+    public static boolean isQuoicouviewAvailable() {
+        return !(isHardcoreMode() && !getBlocked("nav_show_direct", true));
+    }
+
+    /** Whether the card presenting Quoicouview mode has been shown on this installation. */
+    public static boolean isQuoicouviewIntroShown() { return getBlocked("quoicouview_intro_shown", false); }
+
+    public static void setQuoicouviewIntroShown() { setBlocked("quoicouview_intro_shown", true); }
 
     /**
      * Whether the first-run coach mark (long-press Home to open settings) has
@@ -179,7 +215,7 @@ public final class Config {
 
     /** Navigation-bar icons, with the default the getters use (true = shown). */
     private static final String[] NAV_KEYS = {
-            "nav_show_search", "nav_show_reels", "nav_show_create",
+            "nav_show_home", "nav_show_search", "nav_show_reels", "nav_show_create",
             "nav_show_direct", "nav_show_profile",
     };
 
@@ -190,14 +226,31 @@ public final class Config {
 
     /** Whether the bottom-bar icon for a {@code nav_show_*} key is currently shown. */
     public static boolean isNavTabShown(String navKey) {
+        if ("nav_show_home".equals(navKey)) return isHomeTabShown();
+        if ("nav_show_direct".equals(navKey) && isQuoicouviewEnabled()) return true;
         return getBlocked(navKey, navDefault(navKey));
+    }
+
+    /** The {@code nav_show_*} key behind a bottom-bar tab's resource name, or null. */
+    public static String navKeyForTab(String tab) {
+        if (tab == null) return null;
+        switch (tab) {
+            case "feed_tab": return "nav_show_home";
+            case "search_tab": return "nav_show_search";
+            case "clips_tab": return "nav_show_reels";
+            case "creation_tab": return "nav_show_create";
+            case "direct_tab": return "nav_show_direct";
+            case "profile_tab": return "nav_show_profile";
+            default: return null;
+        }
     }
 
     /**
      * The {@code nav_show_*} key whose icon a landing page rides on, or null for
-     * "home" (whose tab is never configurable) and for anything unrecognised.
+     * anything unrecognised.
      */
     public static String navKeyForLanding(String landing) {
+        if ("home".equals(landing)) return "nav_show_home";
         if ("search".equals(landing)) return "nav_show_search";
         if ("direct".equals(landing)) return "nav_show_direct";
         if ("profile".equals(landing)) return "nav_show_profile";
@@ -212,6 +265,7 @@ public final class Config {
      * candidate, lock or no lock.
      */
     public static boolean isLandingAvailable(String landing) {
+        if (isQuoicouviewEnabled()) return "direct".equals(landing);
         String navKey = navKeyForLanding(landing);
         return navKey == null || isNavTabShown(navKey);
     }
@@ -262,10 +316,12 @@ public final class Config {
      * "search", "direct", "profile".
      */
     public static String getLandingPage() {
+        if (isQuoicouviewEnabled()) return "direct";
         SharedPreferences prefs = prefs();
         String stored = prefs == null ? "home" : prefs.getString("landing_page", "home");
         // The stored choice is kept as-is so re-showing the tab restores it, but a
-        // landing page whose tab is hidden right now falls back to the home feed.
+        // landing page whose tab is hidden right now falls back to "home": the home
+        // feed, or with the Home icon hidden too, the first icon on the bar.
         return isLandingAvailable(stored) ? stored : "home";
     }
 

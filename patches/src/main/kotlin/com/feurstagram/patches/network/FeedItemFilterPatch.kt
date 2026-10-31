@@ -75,6 +75,25 @@ internal object MediaParseWrapperFingerprint : Fingerprint(
     },
 )
 
+// Instagram 453 folded the codec back into the parser itself: the (parser, Z)
+// entry point reads each field name and hashes it inline, and calls itself for
+// carousel children. The hash call is what tells it apart from the other
+// helpers sharing the two error strings.
+internal object MediaParseInlineFingerprint : Fingerprint(
+    returnType = MEDIA_TYPE,
+    strings = listOf("Media:null_pointer_exception", "Media:array_out_of_bounds_exception"),
+    custom = { method, _ ->
+        method.parameterTypes.size == 2 && method.parameterTypes[1].toString() == "Z" &&
+            method.implementation?.instructions?.any { it.isStringHash() } == true
+    },
+)
+
+private fun Instruction.isStringHash(): Boolean {
+    val reference = (this as? ReferenceInstruction)?.reference as? MethodReference ?: return false
+    return opcode == Opcode.INVOKE_VIRTUAL && reference.definingClass == "Ljava/lang/String;" &&
+        reference.name == "hashCode"
+}
+
 private fun Instruction.isMediaCodecCall(wrapper: Method): Boolean {
     if (opcode != Opcode.INVOKE_VIRTUAL) return false
     val reference = (this as ReferenceInstruction).reference as MethodReference
@@ -86,11 +105,7 @@ private fun Instruction.isMediaCodecCall(wrapper: Method): Boolean {
 
 /** Both codec paths read the field name just before its hash dispatch. */
 private fun MutableMethod.hookMediaFieldHash() {
-    val hash = instructions.firstOrNull {
-        val reference = (it as? ReferenceInstruction)?.reference as? MethodReference
-        it.opcode == Opcode.INVOKE_VIRTUAL && reference?.definingClass == "Ljava/lang/String;" &&
-            reference.name == "hashCode"
-    } ?: throw PatchException("Media codec has no field-name hash dispatch")
+    val hash = instructions.firstOrNull { it.isStringHash() } ?: throw PatchException("Media codec has no field-name hash dispatch")
     val keyRegister = (hash as FiveRegisterInstruction).registerC
     val keyLoad = instructions.take(hash.location.index).lastOrNull {
         it.opcode == Opcode.MOVE_RESULT_OBJECT &&
@@ -184,6 +199,7 @@ val feedItemFilterPatch = bytecodePatch(
         // Hand every field name of every media parsed to Block.onMediaField, which
         // is how it learns that the media is an ad (see Block.AD_MEDIA_FIELDS).
         val legacyParser = MediaParseFromJsonFingerprint.methodOrNull
+        val inlineParser = if (legacyParser == null) MediaParseInlineFingerprint.methodOrNull else null
         if (legacyParser != null) legacyParser.apply {
             val dispatch = instructions.first { it.isMediaFieldDispatch() }
             val keyRegister = (dispatch as FiveRegisterInstruction).registerD
@@ -192,6 +208,8 @@ val feedItemFilterPatch = bytecodePatch(
                 "invoke-static/range { v$keyRegister .. v$keyRegister }, " +
                     "$BLOCK_CLASS->onMediaField(Ljava/lang/String;)V",
             )
+        } else if (inlineParser != null) {
+            inlineParser.hookMediaFieldHash()
         } else {
             val wrapper = MediaParseWrapperFingerprint.method
             val reference = (wrapper.instructions.first { it.isMediaCodecCall(wrapper) }

@@ -3,6 +3,7 @@ package com.feurstagram.patches.debug
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.instructions
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.patcher.patch.resourcePatch
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
@@ -12,6 +13,19 @@ import com.feurstagram.patches.shared.Constants.COMPATIBILITY_INSTAGRAM
 import com.feurstagram.patches.shared.Constants.EXTENSION
 
 private const val DEBUG_CLASS = "Lcom/feurstagram/extension/DebugBridge;"
+
+// A debug build is also debuggable, so a debugger (jdb over `adb forward
+// jdwp`) can stop in Instagram's own code: the way to see which of its
+// obfuscated methods a gesture actually runs through.
+private val debuggablePatch = resourcePatch {
+    execute {
+        document("AndroidManifest.xml").use { document ->
+            val application = document.documentElement.getElementsByTagName("application").item(0)
+                as? org.w3c.dom.Element ?: return@use
+            application.setAttribute("android:debuggable", "true")
+        }
+    }
+}
 
 /**
  * Development build only, off by default — enable it with `./build.sh … --debug`
@@ -35,6 +49,8 @@ val debugBridgePatch = bytecodePatch(
     compatibleWith(COMPATIBILITY_INSTAGRAM)
 
     extendWith(EXTENSION)
+
+    dependsOn(debuggablePatch)
 
     execute {
         // Same anchor as the settings entry point: the tab-bar root is the first

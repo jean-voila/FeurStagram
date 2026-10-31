@@ -6,6 +6,76 @@ All notable changes to Feurstagram should be documented in this file.
 
 Nothing yet.
 
+## v453-0-0-57-79
+
+### Added
+- **Quoicouview mode** (experimental, off by default, `quoicouview_mode`). Messages
+  becomes the app's main page with the stories tray on top of the inbox and the
+  notifications button in the inbox header, and Home is turned off (the Home and
+  Messages toggles and the landing page are greyed out while it is on). The switch
+  is the first row of the settings overview, under "Experimental feature"; it is
+  unavailable when the permanent lock froze Messages hidden. A one-time card
+  (`quoicouview_intro_shown`) presents it after the update, with a screenshot the
+  *Quoicouview assets* patch adds to the APK's assets; it is skipped on a fresh
+  install, where the settings guide comes first.
+  The *Quoicouview mode* patch integrates it into Instagram's own code, with no
+  overlay or padding:
+  - every `IgRecyclerViewAdapter` registers one more row type, `StoriesTrayRow`
+    (made a subclass of the obfuscated item definition and view holder at patch
+    time), and the inbox's list updates get its model first. The row scrolls,
+    recycles and diffs like the inbox's other rows;
+  - the row shows the feed's own `reels_tray_container`, adopted when the row is
+    bound. The feed page stays alive off screen, so the tray keeps its live
+    content (new stories, seen rings, "Your story");
+  - stories open as they do from Home: the viewer grows out of the tapped avatar,
+    is stacked in the current tab, and shrinks back into it when Back or the
+    swipe-down closes it. The feed tray controller's two "is the feed visible"
+    checks also accept the tray in the inbox, and the controller, a lifecycle
+    listener of the feed fragment that never resumes here, gets the inbox's
+    resume and pause instead (that is where it plays the closing animation and
+    refreshes the tray). The viewer is added over the inbox rather than replacing
+    it (the navigator's other commit), so closing it does not rebuild the inbox
+    first; the controller is told the page is covered, then uncovered, as the
+    viewer comes and goes;
+  - the feed header's notifications button (`ToastingBadge`, with its unread
+    badge) moves to the inbox header's end buttons, whose width is refitted as
+    `IgdsActionBar` sizes them. Its tap opens the notifications in the Messages
+    tab. It stays hidden in Home's header when *Notifications button* is blocked.
+- **Hide the Home icon** (#127). *Navigation bar* gains a Home toggle (shown by
+  default, `nav_show_home`, frozen by the permanent lock like the other icons).
+  Long-pressing a tab is the only way into the settings, so with Home hidden the
+  gesture moves to the first icon left on the bar (`Hiders.settingsTab`), and the
+  first-run guide points there too. Home only goes once another icon of the live
+  bar is shown: hiding every icon keeps it. The swipe skipper already keeps swipes
+  and Back off the hidden feed page; on cold start a "Home feed" landing page now
+  opens the first visible tab instead (Create excluded), and the settings show it
+  as "First icon on the bar".
+
+### Changed
+- **Back history skips a hidden Home.** The new *Hidden Home in Back history*
+  patch makes the tab Back handling ("NavigationController.onBackPress") count the
+  tab history without hidden-feed entries. With Home hidden (or in Quoicouview
+  mode), Back from the first icon leaves the app instead of walking onto the
+  hidden feed.
+- **Debug builds.** `--debug` builds are now `android:debuggable`, and the debug
+  bridge gains view-tree commands (`TREE`, `CLICK`, `TOUCH`, `FIELDS`) and `INTRO`
+  to show the Quoicouview card.
+- Updated to Instagram 453.0.0.57.79. The English and French compatibility guides,
+  their modification dates and the sitemap now match this base version.
+
+### Fixed
+- **Launch cards fit short screens.** The cards sized by `Settings.boundToFrame`
+  (What's new, follow prompt, settings guide, the new Quoicouview card) measured
+  their overflow from the laid-out card, which is already capped at the screen,
+  so the buttons could be squeezed instead of the shrinkable block. The card's
+  natural height is now measured.
+- **Sponsored-media filtering works on Instagram 453.** The media parser's
+  `(parser, Z)` entry point reads and hashes each field name inline again (no
+  separate codec, carousel children parsed by recursion), so neither previous
+  fingerprint matched and the *Feed item filtering* patch failed to apply. A third
+  fingerprint matches it by its two error-report strings, signature and inline
+  `String.hashCode` dispatch; the 452 and older paths are kept.
+
 ## v452-0-0-48-64
 
 ### Added

@@ -147,8 +147,9 @@ You have two options:
 ## What Gets Disabled
 
 All content blocks are **individual runtime toggles** — long-press the Home
-tab at the bottom-left of the main tab bar to open the Feurstagram settings
-page and check/uncheck what you want blocked. A single APK covers every
+tab at the bottom-left of the main tab bar (or, if you hid Home, the first icon
+of the bar) to open the Feurstagram settings page and check/uncheck what you
+want blocked. A single APK covers every
 combination.
 
 | Feature | Default | Toggleable | How |
@@ -186,20 +187,28 @@ of just the accounts you follow, with the recommended/ranked posts dropped.
 ## Settings Page
 
 **Long-press the Home tab** (the house icon at the bottom-left of Instagram's
-main tab bar). A full-screen, scrollable settings page opens — Material 3
+main tab bar). If you hid the Home icon, long-press the first icon left on the
+bar instead. A full-screen, scrollable settings page opens — Material 3
 Expressive, monochrome, and padded to fit around system bars and cutouts on any
 device. It starts on an overview: one row per section, with Instagram's own
 outline icon and a one-line summary of that section's current state (for
 example "3 of 10 hidden"). Tapping a row opens the section's page in the same
 window, with a back arrow; Back returns to the overview. The sections are:
 
+- **Experimental feature: Quoicouview mode** (off by default) — Messages becomes
+  the main page, with the stories tray at the top of the inbox and the
+  notifications button in its header, and Home is turned off. A card presents it
+  once after the update, with a screenshot.
+
 - **Blocked surfaces** — toggles for Home Feed, Explore, Reels, Stories,
   Suggested accounts, Ads, Instants, and Notes.
-- **Navigation bar** — show or hide each bottom-bar icon (Search, Reels,
+- **Navigation bar** — show or hide each bottom-bar icon (Home, Search, Reels,
   Create, Messages, Profile) independently of the content blocks, with a live
   preview of the bar above the toggles. A toggle for a tab your Instagram build
-  does not have (451 has no Create tab) is greyed out. Home always
-  stays, since long-pressing it is how you get back here. A swipe that would
+  does not have (451 has no Create tab) is greyed out. Hiding Home moves the
+  settings gesture to the first icon left on the bar, and Instagram then opens
+  on that icon instead of the hidden feed; Home stays if every other icon is
+  hidden, so the settings remain reachable. A swipe that would
   land on a hidden tab carries straight on to the next visible one, so a hidden
   section stays hidden instead of being one flick away.
 - **Feed** — *Following feed only*: restrict the Home Feed to accounts you
@@ -213,7 +222,8 @@ window, with a back arrow; Back returns to the overview. The sections are:
 - **Landing page** — choose which surface the app jumps to on cold start
   (Home feed, Search, Direct messages, or Profile). A surface whose navigation
   icon is hidden can't be picked, and stops being used if you hide it later:
-  landing on it would hand back exactly what you removed.
+  landing on it would hand back exactly what you removed. Instagram then opens
+  on the Home feed, or on the first icon of the bar if Home is hidden too.
 - **Updates** — after an update, the first launch shows a **What's new** card with
   that version's release notes. Then, *Automatic update check* (on by default): on launch,
   Feurstagram checks GitHub for a newer release and, if your build is out of
@@ -282,7 +292,8 @@ Feurstagram/
 ├── patches/                      # Patches (Kotlin): where to inject, by fingerprint
 │   └── src/main/kotlin/com/feurstagram/patches/
 │       ├── network/              # Network blocking + feed-item filter + following-feed
-│       ├── settings/             # Long-press settings entry point (tab bar)
+│       ├── settings/             # Long-press settings entry point (tab bar) + Back history
+│       ├── quoicouview/          # Stories tray as a row of the Direct inbox
 │       ├── signature/            # Signing-cert trust bypass (deep links)
 │       ├── display/              # Force SDR (disable Instagram's forced HDR window)
 │       ├── debug/                # ADB settings bridge (dev only, --debug)
@@ -296,6 +307,9 @@ Feurstagram/
         ├── Display.java          # Window colour-mode control (Force dark / SDR)
         ├── Hiders.java           # Nav-tab / Notes / Instants hiders + landing redirect
         ├── HiddenTabSwipeSkipper.java  # Keeps swipes off hidden tabs' pages
+        ├── Quoicouview.java      # Quoicouview mode: inbox row hooks + story launch
+        ├── StoriesTrayRow.java   # The inbox row type that holds the stories tray
+        ├── QuoicouviewIntro.java # One-time card presenting Quoicouview mode
         ├── DebugBridge.java      # Dev-only ADB bridge over the settings (--debug builds)
         └── UpdateChecker.java    # On-launch GitHub release check
 ```
@@ -332,12 +346,30 @@ logic lives in compiled extension classes that are merged into the app.
 
 ### Settings Hook
 A fingerprint matches the main tab-bar binder and injects a watcher on it. The
-watcher resolves the `feed_tab` id via `Resources.getIdentifier(...)`, grabs
-the Home tab once laid out, and installs a long-press listener. Long-pressing
+watcher resolves the tab ids via `Resources.getIdentifier(...)`, grabs the
+Home tab (or the first visible tab when Home is hidden) once laid out, and
+installs a long-press listener. Long-pressing
 opens a full-screen Material dark page: content toggles plus a landing-page
 selector, all backed by `SharedPreferences` (`feurstagram_prefs`). The same
 hook installs the navigation-tab/Notes/Instants hiders, the hidden-tab swipe
 skipper and the cold-start landing-page redirect.
+
+### Quoicouview mode
+The Direct inbox is an `IgRecyclerViewAdapter`: a list of models, each drawn by
+the row type registered for its class. The patch registers one more row type,
+`StoriesTrayRow`, in every such adapter (it is made a subclass of Instagram's
+obfuscated row and holder base classes at patch time), and hooks the adapter's
+list updates so the inbox's list gets the stories row first. The row holds the
+feed's own stories tray: Instagram keeps every tab's page alive, so the feed
+keeps the tray up to date while it is drawn in the inbox. A tap opens the story
+exactly as on Home, growing out of the avatar and shrinking back into it on
+close: the feed tray controller's "is the feed visible" checks accept the tray
+in the inbox, and the controller, a lifecycle listener of the feed fragment,
+follows the inbox's resume and pause instead. The viewer is added over the
+inbox rather than replacing it, so closing it does not wait for the inbox to be
+rebuilt. The feed header's notifications
+button is moved to the inbox header the same way. A third patch keeps the hidden
+Home out of the tab Back history.
 
 ### Network Blocking
 A fingerprint matches `TigonServiceLayer.startRequest` (a named class) and

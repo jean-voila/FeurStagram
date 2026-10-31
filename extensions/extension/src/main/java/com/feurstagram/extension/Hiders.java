@@ -32,9 +32,11 @@ public final class Hiders {
         observer.addOnGlobalLayoutListener(new VisibilityHider(root, "block_notifications",
                 false, false, "action_bar_buttons_container_right", "notification"));
         // Bottom-navigation icons, each shown/hidden independently. These use the
-        // inverted "nav_show_<tab>" preference (true = shown). Home is intentionally
-        // absent: long-pressing it opens Settings, so it must stay visible. Reels
-        // defaults to hidden, matching the old "blocking reels hid its tab" behaviour.
+        // inverted "nav_show_<tab>" preference (true = shown). Home has its own
+        // hider: it carries the settings gesture, so it may only go when another
+        // icon stays to take it over. Reels defaults to hidden, matching the old
+        // "blocking reels hid its tab" behaviour.
+        observer.addOnGlobalLayoutListener(new HomeTabHider(root));
         observer.addOnGlobalLayoutListener(new VisibilityHider(root, "nav_show_search", true, true, null, "search_tab"));
         observer.addOnGlobalLayoutListener(new VisibilityHider(root, "nav_show_reels", false, true, null, "clips_tab"));
         observer.addOnGlobalLayoutListener(new VisibilityHider(root, "nav_show_create", true, true, null, "creation_tab"));
@@ -46,6 +48,8 @@ public final class Hiders {
         observer.addOnGlobalLayoutListener(new LandingWatcher(root));
         // Keep swipes off the pages whose tab was hidden.
         HiddenTabSwipeSkipper.install(root);
+        // Stories tray on top of Messages, when Quoicouview mode is on.
+        Quoicouview.install(root);
     }
 
     static int resolveId(Context context, String name) {
@@ -55,6 +59,150 @@ public final class Hiders {
             id = resources.getIdentifier(name, "id", "com.instagram.android");
         }
         return id;
+    }
+
+    /**
+     * Called by Instagram's Back handling with the depth of its tab history (the
+     * tabs Back walks back through, oldest first): the depth to act on.
+     *
+     * With the Home icon hidden (the toggle, or Quoicouview mode) the history
+     * still starts on Home, where Instagram always starts, and Back from the
+     * first tab shown would walk back onto the hidden feed. A hidden Home is not
+     * counted, so Back from that tab leaves the app, as Back from Home does.
+     * Instagram's own start is left alone: starting elsewhere changes how it
+     * presents stories opened from Messages.
+     */
+    public static int backHistoryDepth(java.util.List<?> history, int depth) {
+        try {
+            if (history == null || Config.isHomeTabShown()) return depth;
+            int shown = 0;
+            for (Object entry : history) {
+                if (!"fragment_feed".equals(fragmentTag(tabOf(entry)))) shown++;
+            }
+            return Math.min(depth, shown);
+        } catch (Throwable ignored) {
+            return depth;
+        }
+    }
+
+    /** The tab enum constant a tab-history entry holds, or null. */
+    private static Object tabOf(Object entry) {
+        if (entry == null) return null;
+        for (java.lang.reflect.Field field : entry.getClass().getDeclaredFields()) {
+            if (!field.getType().isEnum() || java.lang.reflect.Modifier.isStatic(field.getModifiers())) continue;
+            try {
+                field.setAccessible(true);
+                return field.get(entry);
+            } catch (Throwable ignored) {
+                // next field
+            }
+        }
+        return null;
+    }
+
+    /** The "fragment_..." tag a tab enum constant carries, or null. */
+    private static String fragmentTag(Object tab) {
+        if (tab == null) return null;
+        for (Class<?> c = tab.getClass(); c != null && c != Enum.class; c = c.getSuperclass()) {
+            for (java.lang.reflect.Field field : c.getDeclaredFields()) {
+                if (field.getType() != String.class
+                        || java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+                    continue;
+                }
+                try {
+                    field.setAccessible(true);
+                    Object value = field.get(tab);
+                    if (value instanceof String && ((String) value).startsWith("fragment_")) {
+                        return (String) value;
+                    }
+                } catch (Throwable ignored) {
+                    // next field
+                }
+            }
+        }
+        return null;
+    }
+
+    /** The bottom tab bar in the window holding {@code view}, or null if it is not laid out. */
+    static ViewGroup tabBar(View view) {
+        if (view == null) return null;
+        Context context = view.getContext();
+        View window = view.getRootView();
+        if (context == null || window == null) return null;
+        int id = resolveId(context, "tab_bar");
+        View bar = id == 0 ? null : window.findViewById(id);
+        return bar instanceof ViewGroup ? (ViewGroup) bar : null;
+    }
+
+    /** A tab's resource name ("feed_tab", "direct_tab", ...), or null. */
+    static String tabName(View tab) {
+        int id = tab.getId();
+        if (id == View.NO_ID) return null;
+        try {
+            return tab.getResources().getResourceEntryName(id);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    /**
+     * Whether Home is off the bar: the user hid it and another icon of this bar
+     * is still shown to carry the settings gesture (see {@link Config#isHomeTabShown}).
+     * The bar is checked too because Instagram drops tabs between versions, so a
+     * tab the preferences call shown may not exist here.
+     */
+    static boolean isHomeHidden(ViewGroup bar) {
+        if (Config.isHomeTabShown()) return false;
+        for (int i = 0; i < bar.getChildCount(); i++) {
+            String name = tabName(bar.getChildAt(i));
+            String key = Config.navKeyForTab(name);
+            if (key != null && !"feed_tab".equals(name) && Config.isNavTabShown(key)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * The tab whose long-press opens the settings: Home while it is on the bar,
+     * otherwise the first icon still shown. Null until the bar is laid out.
+     */
+    static View settingsTab(View anyView) {
+        ViewGroup bar = tabBar(anyView);
+        if (bar == null) return null;
+        View home = null;
+        for (int i = 0; i < bar.getChildCount(); i++) {
+            View tab = bar.getChildAt(i);
+            if ("feed_tab".equals(tabName(tab))) home = tab;
+        }
+        if (home != null && !isHomeHidden(bar)) return home;
+        for (int i = 0; i < bar.getChildCount(); i++) {
+            View tab = bar.getChildAt(i);
+            String name = tabName(tab);
+            String key = Config.navKeyForTab(name);
+            if (key != null && !"feed_tab".equals(name) && Config.isNavTabShown(key)) return tab;
+        }
+        return home;
+    }
+
+    /** Shows or hides the Home icon on every layout pass; see {@link #isHomeHidden}. */
+    static final class HomeTabHider implements ViewTreeObserver.OnGlobalLayoutListener {
+        private final ViewGroup root;
+
+        HomeTabHider(ViewGroup root) {
+            this.root = root;
+        }
+
+        @Override
+        public void onGlobalLayout() {
+            ViewGroup bar = tabBar(root);
+            if (bar == null) return;
+            int visibility = isHomeHidden(bar) ? View.GONE : View.VISIBLE;
+            for (int i = 0; i < bar.getChildCount(); i++) {
+                View tab = bar.getChildAt(i);
+                if ("feed_tab".equals(tabName(tab)) && tab.getVisibility() != visibility) {
+                    tab.setVisibility(visibility);
+                }
+            }
+        }
     }
 
     /**
@@ -109,7 +257,9 @@ public final class Hiders {
                 if (scopeView == null) return; // container not on this screen; leave everything alone
                 searchRoot = scopeView;
             }
-            boolean pref = Config.getBlocked(key, defaultValue);
+            // Nav icons go through Config, which knows the ones a mode forces.
+            boolean pref = key.startsWith("nav_show_") ? Config.isNavTabShown(key)
+                    : Config.getBlocked(key, defaultValue);
             boolean hidden = invert ? !pref : pref; // invert: pref true = shown
             int visibility = hidden ? View.GONE : View.VISIBLE;
             for (String name : names) {
@@ -178,7 +328,9 @@ public final class Hiders {
 
     /**
      * Redirects to the chosen landing surface (search/direct/profile) once per
-     * tab-bar build, then detaches. "home" needs no redirect.
+     * tab-bar build, then detaches. "home" needs no redirect, unless the Home icon
+     * is hidden: the app would open on a page that is off the bar, so it moves on
+     * to the first tab that is shown.
      */
     static final class LandingWatcher implements ViewTreeObserver.OnGlobalLayoutListener {
         private static final int MAX_ATTEMPTS = 30;
@@ -210,19 +362,38 @@ public final class Hiders {
                 target = "direct_tab";
             } else if ("profile".equals(landing)) {
                 target = "profile_tab";
-            } else {
+            } else if (Config.isHomeTabShown()) {
                 detach(); // "home" or unknown: nothing to do
                 return;
+            } else {
+                target = null; // Home is hidden: the first tab still shown
             }
 
-            int id = resolveId(context, target);
-            if (id == 0) {
-                detach(); // not present in this build
-                return;
+            View view;
+            if (target == null) {
+                ViewGroup bar = tabBar(root);
+                if (bar == null) {
+                    if (++attempts >= MAX_ATTEMPTS) detach();
+                    return; // not laid out yet; retry up to the bound
+                }
+                if (!isHomeHidden(bar)) {
+                    detach(); // Home kept: no other tab of this bar is shown
+                    return;
+                }
+                view = firstLandableTab(bar);
+                if (view == null) {
+                    detach();
+                    return;
+                }
+            } else {
+                int id = resolveId(context, target);
+                if (id == 0) {
+                    detach(); // not present in this build
+                    return;
+                }
+                // Search the whole window so action-bar entries are reachable too.
+                view = root.getRootView().findViewById(id);
             }
-
-            // Search the whole window so action-bar entries are reachable too.
-            View view = root.getRootView().findViewById(id);
             if (view == null) {
                 if (++attempts >= MAX_ATTEMPTS) detach();
                 return; // not laid out yet; retry up to the bound
@@ -231,6 +402,18 @@ public final class Hiders {
             view.performClick();
             done = true;
             detach();
+        }
+
+        /** First tab shown on the bar that opens a page (Home and Create excluded). */
+        private View firstLandableTab(ViewGroup bar) {
+            for (int i = 0; i < bar.getChildCount(); i++) {
+                View tab = bar.getChildAt(i);
+                String name = tabName(tab);
+                if ("feed_tab".equals(name) || "creation_tab".equals(name)) continue;
+                String key = Config.navKeyForTab(name);
+                if (key != null && Config.isNavTabShown(key)) return tab;
+            }
+            return null;
         }
 
         private void detach() {

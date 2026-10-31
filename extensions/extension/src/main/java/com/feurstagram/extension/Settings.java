@@ -38,9 +38,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Feurstagram settings, shown as a full-screen page when the Home tab is
- * long-pressed. Built entirely in code (no bundled resources) and persisted
- * through {@link Config}.
+ * Feurstagram settings, shown as a full-screen page when the Home tab (or, with
+ * Home hidden, the first tab on the bar) is long-pressed. Built entirely in code
+ * (no bundled resources) and persisted through {@link Config}.
  *
  * <h3>The look: Material 3 Expressive, monochrome</h3>
  * White is the only accent — no hue anywhere, so the panel reads as part of a
@@ -113,9 +113,10 @@ public final class Settings {
         tabBar.getViewTreeObserver().addOnGlobalLayoutListener(new HomeTabWatcher(tabBar));
         Hiders.installAll(tabBar);
         Context activity = getActivityContext(tabBar);
-        // The follow card comes first after an install or update; "What's new"
-        // waits until it is dismissed.
-        FollowPrompt.maybeShow(activity, () -> UpdateChecker.checkWhatsNew(activity));
+        // The follow card comes first after an install or update, then the card
+        // presenting Quoicouview mode; "What's new" waits until both are dismissed.
+        FollowPrompt.maybeShow(activity, () ->
+                QuoicouviewIntro.maybeShow(activity, () -> UpdateChecker.checkWhatsNew(activity)));
         UpdateChecker.check(activity);
     }
 
@@ -608,6 +609,11 @@ public final class Settings {
     };
 
     private static void buildOverview(Context context, LinearLayout column, Pages pages) {
+        LinearLayout experimental = addSection(context, column, "Experimental feature");
+        addRow(context, experimental, "Quoicouview mode", "quoicouview_mode", Config.isQuoicouviewEnabled());
+        if (!Config.isQuoicouviewAvailable()) greyOut(experimental.getChildAt(experimental.getChildCount() - 1));
+        sealGroup(context, experimental);
+
         LinearLayout content = addSection(context, column, "Content");
         int hidden = 0;
         for (String key : SURFACE_KEYS) {
@@ -686,6 +692,7 @@ public final class Settings {
 
         LinearLayout nav = addSection(context, column, "Icons");
         Runnable refresh = preview::refresh;
+        addRow(context, nav, "Home", "nav_show_home", Config.getBlocked("nav_show_home", true), refresh);
         addRow(context, nav, "Search", "nav_show_search", Config.getBlocked("nav_show_search", true), refresh);
         addRow(context, nav, "Reels", "nav_show_reels", Config.getBlocked("nav_show_reels", false), refresh);
         addRow(context, nav, "Create", "nav_show_create", Config.getBlocked("nav_show_create", true), refresh);
@@ -696,21 +703,30 @@ public final class Settings {
         // Instagram drops tabs between versions (451 has no Create tab). A toggle
         // for a tab the live bar does not have would do nothing, so it is greyed
         // out; outside the app the order is a guess and every row stays live.
+        String[] tabs = {"feed_tab", "search_tab", "clips_tab", "creation_tab", "direct_tab", "profile_tab"};
         if (NavPreview.isLive(context)) {
-            String[] tabs = {"search_tab", "clips_tab", "creation_tab", "direct_tab", "profile_tab"};
             List<String> present = NavPreview.barOrder(context);
             for (int i = 0; i < tabs.length && i < nav.getChildCount(); i++) {
-                if (present.contains(tabs[i])) continue;
-                View row = nav.getChildAt(i);
-                if (row instanceof ViewGroup) {
-                    ViewGroup group = (ViewGroup) row;
-                    for (int j = 0; j < group.getChildCount(); j++) group.getChildAt(j).setEnabled(false);
-                }
-                row.setEnabled(false);
-                row.setClickable(false);
-                row.setAlpha(0.38f);
+                if (!present.contains(tabs[i])) greyOut(nav.getChildAt(i));
             }
         }
+        // Quoicouview mode decides these two itself: Home off, Messages on.
+        if (Config.isQuoicouviewEnabled()) {
+            for (int i = 0; i < tabs.length && i < nav.getChildCount(); i++) {
+                if (tabs[i].equals("feed_tab") || tabs[i].equals("direct_tab")) greyOut(nav.getChildAt(i));
+            }
+        }
+    }
+
+    /** Disable a settings row and everything in it, dimmed like a disabled control. */
+    private static void greyOut(View row) {
+        if (row instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) row;
+            for (int j = 0; j < group.getChildCount(); j++) group.getChildAt(j).setEnabled(false);
+        }
+        row.setEnabled(false);
+        row.setClickable(false);
+        row.setAlpha(0.38f);
     }
 
     private static void buildFeed(Context context, LinearLayout column) {
@@ -760,6 +776,8 @@ public final class Settings {
     }
 
     private static String landingLabel(String value) {
+        // "home" with the Home icon hidden: the landing redirect opens the first icon.
+        if (!Config.isLandingAvailable(value)) return "First icon on the bar";
         for (int i = 0; i < LANDING_VALUES.length; i++) {
             if (LANDING_VALUES[i].equals(value)) return LANDING_LABELS[i];
         }
@@ -877,15 +895,8 @@ public final class Settings {
         }
 
         static boolean isShown(String tab) {
-            switch (tab) {
-                case "feed_tab": return true;
-                case "clips_tab": return Config.getBlocked("nav_show_reels", false);
-                case "direct_tab": return Config.getBlocked("nav_show_direct", true);
-                case "search_tab": return Config.getBlocked("nav_show_search", true);
-                case "creation_tab": return Config.getBlocked("nav_show_create", true);
-                case "profile_tab": return Config.getBlocked("nav_show_profile", true);
-                default: return false;
-            }
+            String key = Config.navKeyForTab(tab);
+            return key != null && Config.isNavTabShown(key);
         }
 
         static String label(String tab) {
@@ -1103,11 +1114,16 @@ public final class Settings {
         // are measured, a rotation — all show up as ordinary layout passes.
         frame.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
             int available = frame.getHeight() - frame.getPaddingTop() - frame.getPaddingBottom();
-            if (available <= 0 || card.getHeight() == 0) return;
+            if (available <= 0 || card.getWidth() == 0) return;
             ViewGroup.LayoutParams lp = growable.getLayoutParams();
-            int overflow = card.getHeight() - available;
+            // The card's laid-out height can't tell: it is capped at the space
+            // available, its last children (the buttons) squeezed to fit. Its
+            // natural height is what it would take with no limit.
+            card.measure(View.MeasureSpec.makeMeasureSpec(card.getWidth(), View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+            int overflow = card.getMeasuredHeight() - available;
             if (overflow > 0) {
-                int height = Math.max(dp(frame.getContext(), 72), growable.getHeight() - overflow);
+                int height = Math.max(dp(frame.getContext(), 72), growable.getMeasuredHeight() - overflow);
                 if (lp.height != height) {
                     lp.height = height;
                     growable.setLayoutParams(lp);
@@ -1258,6 +1274,12 @@ public final class Settings {
         if (key.equals("force_sdr")) return "Keep blacks deep by stopping Instagram forcing HDR on the UI.";
         if (key.equals("block_friends_lane")) return "Hide the Friends tab and its avatars in the Reels header.";
         if (key.equals("block_notifications")) return "Hide the notifications (heart) button in the feed header.";
+        if (key.equals("quoicouview_mode")) {
+            return "Messages become the main page, with stories on top. Home is turned off.";
+        }
+        if (key.equals("nav_show_home")) {
+            return "Show this icon in the navigation bar. When hidden, long-press the first icon to open these settings.";
+        }
         if (key.startsWith("nav_show_")) return "Show this icon in the navigation bar.";
         return "Hide this surface in Instagram.";
     }
@@ -1307,7 +1329,7 @@ public final class Settings {
                 View row = rows.get(i);
                 row.setEnabled(available);
                 row.setAlpha(available ? 1f : 0.38f);
-                marks.get(i).setChecked(LANDING_VALUES[i].equals(current));
+                marks.get(i).setChecked(available && LANDING_VALUES[i].equals(current));
             }
         };
         landingSync[0].run();

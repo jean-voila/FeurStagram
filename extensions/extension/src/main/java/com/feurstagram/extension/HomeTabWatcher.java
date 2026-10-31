@@ -15,6 +15,10 @@ import android.view.ViewTreeObserver;
  * bar being present and laid out a particular way. Long-pressing Home only needs
  * the tab bar, which always exists, so settings stay reachable everywhere. The id
  * is resolved by name (with a clone fallback) so it survives Instagram version bumps.
+ *
+ * When the user hides the Home icon (issue #127) the gesture moves to the first
+ * icon still on the bar ({@link Hiders#settingsTab}). Settings changes restart the
+ * app, so picking that tab once per tab-bar build is enough.
  */
 public final class HomeTabWatcher implements ViewTreeObserver.OnGlobalLayoutListener {
 
@@ -28,13 +32,7 @@ public final class HomeTabWatcher implements ViewTreeObserver.OnGlobalLayoutList
     public void onGlobalLayout() {
         ViewGroup bar = tabBar;
         if (bar == null) return;
-        Context context = bar.getContext();
-        if (context == null) return;
-
-        int id = Hiders.resolveId(context, "feed_tab");
-        if (id == 0) return; // resource not found yet; keep waiting
-
-        View homeTab = bar.getRootView().findViewById(id);
+        View homeTab = Hiders.settingsTab(bar);
         if (homeTab == null) return; // not inflated yet; keep waiting
 
         // Note: do NOT call homeTab.setTag(...) to mark this view. Instagram stores

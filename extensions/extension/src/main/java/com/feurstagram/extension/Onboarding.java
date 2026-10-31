@@ -172,13 +172,9 @@ public final class Onboarding {
             }
         }
 
+        /** The tab carrying the settings gesture: Home, unless the user hid it. */
         private View findHomeTab(ViewGroup bar) {
-            Context context = bar.getContext();
-            if (context == null) return null;
-            int id = Hiders.resolveId(context, "feed_tab");
-            if (id == 0) return null;
-            View root = bar.getRootView();
-            return root == null ? null : root.findViewById(id);
+            return Hiders.settingsTab(bar);
         }
 
         /** Build and show the overlay. Returns true once it is on screen. */
