@@ -6,6 +6,51 @@ All notable changes to Feurstagram should be documented in this file.
 
 Nothing yet.
 
+## v454-0-0-13-77
+
+### Changed
+- **Quoicouview: the search bar stays on top.** The stories row now goes right
+  after the inbox's search bar instead of first in the list. The search bar's
+  list models are obfuscated (two variants on 454), so the *Quoicouview mode*
+  patch collects every list model taken by the composables that log themselves
+  as "search_row" and replaces the extension's `Quoicouview.isSearchRow` stub
+  with an `instance-of` check for each (as a new 2-register method: the compiled
+  stub has no register to spare). `onListUpdate` inserts the stories row after
+  the first search row, or first when there is none; if no search model is found
+  at patch time the stub stays and the row stays first.
+
+### Fixed
+- **Story camera in Quoicouview mode** (#155, #157). The tray's "Your story" (+)
+  did nothing, and the swipe to the right that opens the camera from Home had no
+  equivalent on Messages. The camera is the panel left of the tab pages in the
+  swipe navigation (`SwipeNavigationContainer`); the tray controller's
+  "launchReelCamera" asks the swipe navigation controller to move to it, and the
+  container clamps every position to its enabled panels. The tab controller's tab
+  change ("MainTabControllerImpl.onTabChanged") only turns the camera panel on for
+  Home and turns it off for Direct, and its "may a swipe from the main page go on"
+  check also requires Home, so on Messages the request was clamped back to the
+  page. The *Quoicouview mode* patch now has both "is Home the current tab" checks
+  accept Direct (through a bridge added to the controller that asks it whether
+  Direct is current), and replaces `View.canScrollHorizontally` in the swipe
+  navigation's under-the-finger scroll check with
+  `Quoicouview.canScrollHorizontally`: the tab pager (and its inner list) report
+  that they cannot scroll towards the start when every tab before the current one
+  is hidden, so the container takes the swipe, as it does from Home. The tray and
+  the notes row are checked first and keep scrolling. Nothing changes with the
+  mode off.
+- **Sponsored-media filtering works on Instagram 454.** The media parser now
+  null-checks the field name and reads the next token between loading it and
+  hashing it, which tripped the "field-name load too far from hash dispatch"
+  guard. The guard now allows a few instructions as long as none overwrites the
+  name register.
+
+### Changed
+- Updated to Instagram 454.0.0.13.77. The tray controller's "preloadAndLaunchViewer"
+  now builds the viewer's launch parameters in a private helper, so the
+  *Quoicouview mode* patch also searches the controller methods it calls directly.
+  The English and French compatibility guides, their modification dates and the
+  sitemap now match this base version.
+
 ## v453-0-0-57-79
 
 ### Added

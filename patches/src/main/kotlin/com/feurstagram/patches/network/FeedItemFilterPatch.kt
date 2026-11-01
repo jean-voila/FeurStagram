@@ -111,8 +111,14 @@ private fun MutableMethod.hookMediaFieldHash() {
         it.opcode == Opcode.MOVE_RESULT_OBJECT &&
             (it as OneRegisterInstruction).registerA == keyRegister
     } ?: throw PatchException("Media codec field-name load changed")
-    if (hash.location.index - keyLoad.location.index > 3) {
+    // Instagram 454 null-checks the name and reads the next token in between:
+    // allow a few instructions, as long as none of them overwrites the name.
+    val between = instructions.subList(keyLoad.location.index + 1, hash.location.index)
+    if (between.size > 6) {
         throw PatchException("Media codec field-name load is too far from hash dispatch")
+    }
+    if (between.any { it.opcode.setsRegister() && (it as? OneRegisterInstruction)?.registerA == keyRegister }) {
+        throw PatchException("Media codec field name is overwritten before its hash dispatch")
     }
     addInstructions(
         keyLoad.location.index + 1,

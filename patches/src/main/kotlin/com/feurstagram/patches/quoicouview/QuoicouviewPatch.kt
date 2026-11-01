@@ -80,6 +80,18 @@ internal object DirectInboxResultFingerprint : Fingerprint(
     strings = listOf("DirectInboxController.onActivityResult"),
 )
 
+// The main tab controller's tab change ("MainTabControllerImpl.onTabChanged",
+// the name survives in a tracing section): among other things it turns the swipe
+// navigation's panels on and off for the new tab, the camera only for Home.
+internal object MainTabChangedFingerprint : Fingerprint(
+    returnType = "V",
+    strings = listOf("MainTabControllerImpl.onTabChanged: new "),
+)
+
+private const val SWIPE_CONTAINER = "Lcom/instagram/ui/swipenavigation/container/SwipeNavigationContainer;"
+
+private const val EXTENSION_CLASSES = "Lcom/feurstagram/"
+
 private val Method.params get() = parameterTypes.map { it.toString() }
 
 private fun methodRef(reference: Any?) = reference as? MethodReference
@@ -88,8 +100,8 @@ private fun methodRef(reference: Any?) = reference as? MethodReference
 val quoicouviewPatch = bytecodePatch(
     name = "Quoicouview mode",
     description = "Lets the experimental Quoicouview mode put the stories tray at the top of the " +
-        "Direct inbox, as a row of the inbox list, and open stories from there the way the feed " +
-        "opens them.",
+        "Direct inbox, as a row of the inbox list, open stories from there the way the feed " +
+        "opens them, and reach the story camera from Messages as from Home.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_INSTAGRAM)
@@ -339,21 +351,33 @@ val quoicouviewPatch = bytecodePatch(
         // told its page is covered, then uncovered when that viewer goes: the
         // pause and resume the replace would have given it.
 
-        // The tray's launches, by their parameters.
-        StoryTrayLaunchFingerprint.method.apply {
-            val launchParams = instructions.singleOrNull {
+        // The tray's launches, by their parameters. Built in the launch itself up
+        // to Instagram 453; 454 moved them into a private helper of the controller
+        // it calls, so the controller's own direct calls are searched too.
+        val trayLaunch = StoryTrayLaunchFingerprint.method
+        val controller = mutableClassDefBy(controllerType)
+        val launchSteps = listOf(trayLaunch) + trayLaunch.instructions.mapNotNull { instruction ->
+            methodRef((instruction as? ReferenceInstruction)?.reference)?.takeIf {
+                (instruction.opcode == Opcode.INVOKE_DIRECT || instruction.opcode == Opcode.INVOKE_DIRECT_RANGE) &&
+                    it.definingClass == controllerType && it.name != "<init>"
+            }
+        }.distinct().mapNotNull { ref ->
+            controller.methods.singleOrNull { it.name == ref.name && it.params == ref.parameterTypes.map { p -> p.toString() } }
+        }
+        val (launchStep, launchParams) = launchSteps.firstNotNullOfOrNull { step ->
+            step.instructions.singleOrNull {
                 it.opcode == Opcode.INVOKE_DIRECT_RANGE && methodRef((it as ReferenceInstruction).reference)?.let { ref ->
                     ref.name == "<init>" && ref.parameterTypes.map { p -> p.toString() }.let { params ->
                         params.size == 9 && params[1] == "Ljava/lang/Class;" && params.drop(4).all { p -> p == "Z" }
                     }
                 } == true
-            } ?: throw PatchException("Story tray launch no longer builds its launch parameters")
-            val params = (launchParams as RegisterRangeInstruction).startRegister
-            addInstructions(
-                launchParams.location.index + 1,
-                "invoke-static/range { v$params .. v$params }, $QUOICOUVIEW->onTrayLaunch(Ljava/lang/Object;)V",
-            )
-        }
+            }?.let { step to it }
+        } ?: throw PatchException("Story tray launch no longer builds its launch parameters")
+        val params = (launchParams as RegisterRangeInstruction).startRegister
+        launchStep.addInstructions(
+            launchParams.location.index + 1,
+            "invoke-static/range { v$params .. v$params }, $QUOICOUVIEW->onTrayLaunch(Ljava/lang/Object;)V",
+        )
 
         val launcher = StoryViewerPushFingerprint.method
         val launcherType = StoryViewerPushFingerprint.classDef.type
@@ -463,6 +487,186 @@ val quoicouviewPatch = bytecodePatch(
                     ExternalLabel("done", ret),
                 )
             }
+        }
+
+        // --- The camera, left of Messages as it is left of Home ---------------------------
+
+        // The tab controller asks whether Home is the current tab before turning the
+        // camera panel on (at each tab change) and before letting a swipe from the
+        // main page reach it. Each "no" then asks, through a bridge added to the
+        // controller, whether Messages is current and counts as the main page.
+        val tabChanged = MainTabChangedFingerprint.method
+        val tabControllerType = MainTabChangedFingerprint.classDef.type
+        val tabType = tabChanged.params.firstOrNull()
+            ?: throw PatchException("Tab change no longer takes the tabs")
+        if (tabChanged.params.take(2) != listOf(tabType, tabType)) throw PatchException("Tab change no longer takes the old and new tabs")
+        val tabInit = classDefBy(tabType).methods.singleOrNull { it.name == "<clinit>" }?.implementation?.instructions?.toList()
+            ?: throw PatchException("Tab enum has no static initialiser")
+        // Each tab constant is stored right after its name is loaded.
+        fun tabConstant(name: String): FieldReference {
+            val nameAt = tabInit.indexOfFirst {
+                ((it as? ReferenceInstruction)?.reference as? StringReference)?.string == name
+            }
+            if (nameAt < 0) throw PatchException("Tab enum has no $name tab")
+            return tabInit.drop(nameAt).firstNotNullOfOrNull { instruction ->
+                ((instruction as? ReferenceInstruction)?.reference as? FieldReference)?.takeIf {
+                    instruction.opcode == Opcode.SPUT_OBJECT && it.type == tabType
+                }
+            } ?: throw PatchException("Tab enum does not store its $name tab")
+        }
+        val homeTab = tabConstant("FEED")
+        val messagesTab = tabConstant("DIRECT")
+        // isCurrentTab(tab): the controller's one (tab)Z method the tab change calls.
+        val isCurrentTab = tabChanged.instructions.mapNotNull { instruction ->
+            methodRef((instruction as? ReferenceInstruction)?.reference)?.takeIf {
+                instruction.opcode == Opcode.INVOKE_VIRTUAL && it.definingClass == tabControllerType &&
+                    it.returnType == "Z" && it.parameterTypes.map { p -> p.toString() } == listOf(tabType)
+            }
+        }.distinctBy { it.name }.singleOrNull() ?: throw PatchException("Tab change no longer checks the current tab")
+
+        val tabController = mutableClassDefBy(tabControllerType)
+        tabController.addBridge(
+            "feurstagramMessagesIsMainPage", listOf(tabControllerType), "Z", registers = 2,
+            """
+                invoke-static { }, $QUOICOUVIEW->messagesIsMainPage()Z
+                move-result v0
+                if-eqz v0, :no
+                sget-object v0, $tabType->${messagesTab.name}:$tabType
+                invoke-virtual { p0, v0 }, $tabControllerType->${isCurrentTab.name}($tabType)Z
+                move-result v0
+                :no
+                return v0
+            """,
+            AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+        )
+
+        // The swipe navigation's check that a swipe from the main page may go on:
+        // the controller's no-argument boolean its gesture check calls.
+        val swipeAllowedName = classDefBy(SWIPE_CONTAINER).methods.filter {
+            it.params == listOf("Landroid/view/MotionEvent;") && it.returnType == "Z" && !it.name.startsWith("on")
+        }.flatMap { method ->
+            method.implementation?.instructions?.mapNotNull { instruction ->
+                methodRef((instruction as? ReferenceInstruction)?.reference)?.takeIf {
+                    instruction.opcode == Opcode.INVOKE_VIRTUAL && it.definingClass == tabControllerType &&
+                        it.parameterTypes.isEmpty() && it.returnType == "Z"
+                }
+            }.orEmpty()
+        }.map { it.name }.distinct().singleOrNull()
+            ?: throw PatchException("Swipe navigation no longer asks the tab controller about the main page")
+        val swipeAllowed = tabController.methods.single {
+            it.name == swipeAllowedName && it.parameterTypes.isEmpty() && it.returnType == "Z"
+        }
+
+        listOf(tabChanged, swipeAllowed).forEach { method ->
+            if (AccessFlags.STATIC.isSet(method.accessFlags)) throw PatchException("${method.name} is no longer an instance method")
+            val homeChecks = method.instructions.filter { instruction ->
+                val index = instruction.location.index
+                instruction.opcode == Opcode.INVOKE_VIRTUAL && index > 0 &&
+                    methodRef((instruction as ReferenceInstruction).reference)?.let {
+                        it.definingClass == tabControllerType && it.name == isCurrentTab.name
+                    } == true &&
+                    method.instructions[index - 1].let { load ->
+                        load.opcode == Opcode.SGET_OBJECT &&
+                            ((load as ReferenceInstruction).reference as FieldReference).let {
+                                it.definingClass == homeTab.definingClass && it.name == homeTab.name
+                            } &&
+                            (load as OneRegisterInstruction).registerA == (instruction as FiveRegisterInstruction).registerD
+                    }
+            }.map { method.instructions[it.location.index + 1] }.filter { it.opcode == Opcode.MOVE_RESULT }
+            if (homeChecks.isEmpty()) throw PatchException("${method.name} no longer checks for Home")
+            homeChecks.reversed().forEach { result ->
+                val register = (result as OneRegisterInstruction).registerA
+                method.addInstructionsWithLabels(
+                    result.location.index + 1,
+                    """
+                        if-nez v$register, :home
+                        invoke-static/range { p0 .. p0 }, $tabControllerType->feurstagramMessagesIsMainPage($tabControllerType)Z
+                        move-result v$register
+                    """,
+                    ExternalLabel("home", method.instructions[result.location.index + 1]),
+                )
+            }
+        }
+
+        // The swipe navigation only takes a swipe nothing under the finger can
+        // scroll, and the tab pager can always scroll onto the hidden pages left of
+        // Messages: its answer goes through Quoicouview.canScrollHorizontally.
+        val intercept = classDefBy(SWIPE_CONTAINER).methods.singleOrNull { it.name == "onInterceptTouchEvent" }
+            ?: throw PatchException("Swipe navigation has no onInterceptTouchEvent")
+        val scrollCheck = intercept.implementation!!.instructions.mapNotNull { instruction ->
+            methodRef((instruction as? ReferenceInstruction)?.reference)?.takeIf {
+                (instruction.opcode == Opcode.INVOKE_STATIC || instruction.opcode == Opcode.INVOKE_STATIC_RANGE) &&
+                    it.returnType == "Z" &&
+                    it.parameterTypes.map { p -> p.toString() } == listOf("Landroid/view/View;", "I", "I", "I", "Z", "Z")
+            }
+        }.distinctBy { it.definingClass + it.name }.singleOrNull()
+            ?: throw PatchException("Swipe navigation no longer checks what can scroll under the finger")
+        mutableClassDefBy(scrollCheck.definingClass).methods.single {
+            it.name == scrollCheck.name && it.params == scrollCheck.parameterTypes.map { p -> p.toString() }
+        }.apply {
+            val calls = instructions.filter {
+                it.opcode == Opcode.INVOKE_VIRTUAL && methodRef((it as ReferenceInstruction).reference)?.let { ref ->
+                    ref.definingClass == "Landroid/view/View;" && ref.name == "canScrollHorizontally"
+                } == true
+            }
+            if (calls.isEmpty()) throw PatchException("Scroll check no longer asks canScrollHorizontally")
+            calls.forEach { call ->
+                val registers = call as FiveRegisterInstruction
+                replaceInstruction(
+                    call.location.index,
+                    "invoke-static { v${registers.registerC}, v${registers.registerD} }, " +
+                        "$QUOICOUVIEW->canScrollHorizontally(Landroid/view/View;I)Z",
+                )
+            }
+        }
+
+        // --- The stories row goes under the search bar --------------------------------
+
+        // The inbox's search bar is drawn by composables that log themselves as
+        // "search_row" and take the row's list model: each list model such a method
+        // takes is a search bar's (Instagram has a few variants of it).
+        // Quoicouview.isSearchRow is replaced by a check for each of them (its stub
+        // may have no register to spare). Found none: the stub stays, and the
+        // stories row stays first, above the search bar.
+        fun isListModel(type: String): Boolean {
+            fun extendsModel(interfaceType: String): Boolean = interfaceType == modelType ||
+                (runCatching { classDefBy(interfaceType) }.getOrNull()?.interfaces?.any { extendsModel(it) } == true)
+            var current: String? = type
+            while (current != null && current != "Ljava/lang/Object;") {
+                val classDef = runCatching { classDefBy(current) }.getOrNull() ?: return false
+                if (classDef.interfaces.any { extendsModel(it) }) return true
+                current = classDef.superclass
+            }
+            return false
+        }
+        val searchRowParams = mutableSetOf<String>()
+        classDefForEach { classDef ->
+            if (classDef.type.startsWith(EXTENSION_CLASSES)) return@classDefForEach
+            classDef.methods.forEach { method ->
+                val logsSearchRow = method.implementation?.instructions?.any {
+                    ((it as? ReferenceInstruction)?.reference as? StringReference)?.string == "search_row"
+                } == true
+                if (logsSearchRow) searchRowParams += method.params.filter { it.startsWith("L") }
+            }
+        }
+        val searchModels = searchRowParams.filter { isListModel(it) }.sorted()
+        if (searchModels.isNotEmpty()) mutableClassDefBy(QUOICOUVIEW).apply {
+            val stub = methods.singleOrNull {
+                it.name == "isSearchRow" && it.params == listOf("Ljava/lang/Object;") && it.returnType == "Z"
+            } ?: throw PatchException("Extension has no isSearchRow(Object) stub")
+            methods.remove(stub)
+            addBridge(
+                "isSearchRow", listOf("Ljava/lang/Object;"), "Z", registers = 2,
+                searchModels.joinToString("\n") { "instance-of v0, p0, $it\nif-nez v0, :search" } +
+                    """
+                        const/4 v0, 0x0
+                        return v0
+                        :search
+                        const/4 v0, 0x1
+                        return v0
+                    """,
+                stub.accessFlags,
+            )
         }
     }
 }

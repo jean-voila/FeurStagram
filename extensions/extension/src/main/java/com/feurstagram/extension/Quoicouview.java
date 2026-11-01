@@ -15,7 +15,8 @@ import java.util.List;
 
 /**
  * Quoicouview mode (experimental, off by default): Messages becomes the app's
- * main page and the stories tray sits at the top of it, with Home turned off;
+ * main page and the stories tray sits at the top of it, under its search bar,
+ * with Home turned off;
  * the notifications button of Home's header moves to the inbox's header.
  *
  * The Home tab and the landing page are handled by {@link Config} (Home counts
@@ -27,7 +28,8 @@ import java.util.List;
  * by the row type registered for its class. The patch registers one more row
  * type, {@link StoriesTrayRow}, when the adapter is built, and every list
  * update the inbox submits goes through {@link #onListUpdate}, which puts the
- * stories row's model first. The row then lives like any other: it scrolls
+ * stories row's model right after the search bar's ({@link #isSearchRow}), or
+ * first when there is none. The row then lives like any other: it scrolls
  * with the inbox, is recycled and rebound by the list.
  *
  * The row shows Instagram's stories tray itself, not a copy: the feed's
@@ -67,6 +69,20 @@ import java.util.List;
  * first among the inbox header's end buttons: the feed keeps its badge up to
  * date and its tap opens the notifications in the current tab, here Messages.
  * It stays in Home's header, hidden, when the settings block it.
+ *
+ * <h3>The camera</h3>
+ * The story camera is the panel left of the tab pages, in Instagram's swipe
+ * navigation: Home's swipe to the right drags it in, and the "Your story" (+)
+ * of the tray slides it in. Instagram only turns the panel on, and only lets a
+ * swipe from the main page reach it, while Home is the current tab: on
+ * Messages, the panel is turned off, so the tray's (+) did nothing. Both
+ * checks ask the tab controller whether Home is current; the patch has them
+ * accept Messages too ({@link #messagesIsMainPage}). A swipe is only taken by
+ * the swipe navigation when nothing under the finger can scroll that way, and
+ * the tab pager always can, onto the hidden pages left of Messages: the pager
+ * says it cannot when every tab on that side is hidden
+ * ({@link #canScrollHorizontally}). The tray and the notes, which are checked first,
+ * still scroll as they do on Home.
  */
 public final class Quoicouview {
 
@@ -145,7 +161,8 @@ public final class Quoicouview {
 
     /**
      * Called with every list update an {@code IgRecyclerViewAdapter} applies.
-     * For the inbox, puts the stories row first.
+     * For the inbox, puts the stories row right after the search bar, or first
+     * when there is none.
      */
     public static void onListUpdate(Object adapter, Object update) {
         try {
@@ -155,16 +172,30 @@ public final class Quoicouview {
             if (field == null) return;
             @SuppressWarnings("unchecked")
             List<Object> rows = (List<Object>) field.get(update);
-            if (rows == null || (!rows.isEmpty() && rows.get(0) == StoriesTrayRow.Model.INSTANCE)) return;
+            if (rows == null) return;
             List<Object> withTray = new ArrayList<>(rows.size() + 1);
-            withTray.add(StoriesTrayRow.Model.INSTANCE);
+            int at = 0;
             for (Object row : rows) {
-                if (row != StoriesTrayRow.Model.INSTANCE) withTray.add(row);
+                if (row == StoriesTrayRow.Model.INSTANCE) continue;
+                withTray.add(row);
+                if (at == 0 && isSearchRow(row)) at = withTray.size();
             }
+            withTray.add(at, StoriesTrayRow.Model.INSTANCE);
+            // Already in place: leave the update as it is.
+            if (rows.size() == withTray.size() && rows.get(at) == StoriesTrayRow.Model.INSTANCE) return;
             field.set(update, withTray);
         } catch (Throwable ignored) {
             // the list goes through as Instagram built it
         }
+    }
+
+    /**
+     * Whether a row of the inbox is its search bar, which the stories row goes
+     * under. The search bar's list models are obfuscated, so the patch rewrites
+     * this body with a check for each of them.
+     */
+    static boolean isSearchRow(Object row) {
+        return false;
     }
 
     /** The stories row type's view: an empty frame the tray is placed in when bound. */
@@ -271,6 +302,59 @@ public final class Quoicouview {
         if (viewer == null || viewer != sStackedViewer.get()) return null;
         sStackedViewer = new WeakReference<>(null);
         return sInboxResumed ? resumeController() : null;
+    }
+
+    // --- The camera ----------------------------------------------------------------
+
+    /**
+     * Called where the tab controller decides whether the camera panel is on and
+     * whether a swipe from the main page may reach it, each time it found that
+     * Home is not the current tab: whether Messages counts as the main page.
+     */
+    public static boolean messagesIsMainPage() {
+        return Config.isQuoicouviewEnabled();
+    }
+
+    /**
+     * Stands in for {@link View#canScrollHorizontally} in the swipe navigation's
+     * check of what lies under the finger. The tab pager answers no towards the
+     * start when every tab on that side is hidden, so that swipe drags the
+     * camera in, as from Home.
+     */
+    public static boolean canScrollHorizontally(View view, int direction) {
+        boolean canScroll = view.canScrollHorizontally(direction);
+        try {
+            if (!canScroll || direction >= 0 || !Config.isQuoicouviewEnabled()
+                    || view.getLayoutDirection() != View.LAYOUT_DIRECTION_LTR) {
+                return canScroll;
+            }
+            // Asked of the pager and of the list inside it, which the pager's
+            // own answer comes from.
+            Context context = view.getContext();
+            int pagerId = Hiders.resolveId(context, "swipeable_tab_view_pager");
+            boolean pager = pagerId != 0 && (view.getId() == pagerId
+                    || (view.getParent() instanceof View && ((View) view.getParent()).getId() == pagerId));
+            if (!pager) return canScroll;
+            int tabBarId = Hiders.resolveId(context, "tab_bar");
+            View found = tabBarId == 0 ? null : view.getRootView().findViewById(tabBarId);
+            if (!(found instanceof ViewGroup)) return canScroll;
+            ViewGroup tabBar = (ViewGroup) found;
+            for (int i = 0; i < tabBar.getChildCount(); i++) {
+                View tab = tabBar.getChildAt(i);
+                if (tab.isSelected()) return false; // no page to reach before it
+                if (isPageTab(tab)) return canScroll;
+            }
+        } catch (Throwable ignored) {
+            // a pager Instagram reshaped: let it scroll
+        }
+        return canScroll;
+    }
+
+    /** A tab shown in the bar with a page behind it (Create opens the camera, not a page). */
+    private static boolean isPageTab(View tab) {
+        if (tab.getVisibility() != View.VISIBLE) return false;
+        int create = Hiders.resolveId(tab.getContext(), "creation_tab");
+        return create == 0 || tab.getId() != create;
     }
 
     // --- The stories row -----------------------------------------------------------

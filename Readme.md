@@ -196,9 +196,10 @@ example "3 of 10 hidden"). Tapping a row opens the section's page in the same
 window, with a back arrow; Back returns to the overview. The sections are:
 
 - **Experimental feature: Quoicouview mode** (off by default) — Messages becomes
-  the main page, with the stories tray at the top of the inbox and the
-  notifications button in its header, and Home is turned off. A card presents it
-  once after the update, with a screenshot.
+  the main page, with the stories tray at the top of the inbox, under its search
+  bar, and the notifications button in its header, and Home is turned off. The
+  story camera opens from the tray's "Your story" (+) or with a swipe to the
+  right, as on Home. A card presents it once after the update, with a screenshot.
 
 - **Blocked surfaces** — toggles for Home Feed, Explore, Reels, Stories,
   Suggested accounts, Ads, Instants, and Notes.
@@ -359,7 +360,8 @@ The Direct inbox is an `IgRecyclerViewAdapter`: a list of models, each drawn by
 the row type registered for its class. The patch registers one more row type,
 `StoriesTrayRow`, in every such adapter (it is made a subclass of Instagram's
 obfuscated row and holder base classes at patch time), and hooks the adapter's
-list updates so the inbox's list gets the stories row first. The row holds the
+list updates so the inbox's list gets the stories row right after its search
+bar (the search bar's obfuscated list models are found at patch time). The row holds the
 feed's own stories tray: Instagram keeps every tab's page alive, so the feed
 keeps the tray up to date while it is drawn in the inbox. A tap opens the story
 exactly as on Home, growing out of the avatar and shrinking back into it on
@@ -368,7 +370,12 @@ in the inbox, and the controller, a lifecycle listener of the feed fragment,
 follows the inbox's resume and pause instead. The viewer is added over the
 inbox rather than replacing it, so closing it does not wait for the inbox to be
 rebuilt. The feed header's notifications
-button is moved to the inbox header the same way. A third patch keeps the hidden
+button is moved to the inbox header the same way. The story camera is the swipe
+navigation's panel left of the tab pages, which Instagram only turns on, and only
+lets a swipe from the main page reach, while Home is the current tab: both "is
+Home current" checks of the tab controller accept Messages, and the tab pager
+tells the swipe navigation it cannot scroll onto the hidden pages left of
+Messages, so the tray's "Your story" (+) and a swipe to the right open the camera. A third patch keeps the hidden
 Home out of the tab Back history.
 
 ### Network Blocking
