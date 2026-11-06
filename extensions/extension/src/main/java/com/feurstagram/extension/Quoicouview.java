@@ -140,6 +140,7 @@ public final class Quoicouview {
                 try {
                     adoptTray(null);
                     adoptHeart();
+                    resumeLateController();
                 } catch (Throwable ignored) {
                     // a layout pass Instagram reshaped: leave everything as it is
                 }
@@ -249,6 +250,7 @@ public final class Quoicouview {
             return null;
         }
         Object controller = sTrayController.get();
+        if (controller == null || !isFeedAttached(controller)) return null;
         sResumedController = new WeakReference<>(controller);
         return controller;
     }
@@ -258,6 +260,34 @@ public final class Quoicouview {
         Object controller = sResumedController.get();
         sResumedController = new WeakReference<>(null);
         return controller;
+    }
+
+    /**
+     * The inbox can resume before the feed page is built: its controller does not
+     * exist yet, or its fragment is not attached (and it would crash asking for its
+     * activity). It gets the resume it missed on a later layout pass.
+     */
+    private static void resumeLateController() throws ReflectiveOperationException {
+        if (!sInboxResumed) return;
+        Object controller = resumeController();
+        if (controller != null) controller.getClass().getMethod("onResume").invoke(controller);
+    }
+
+    /** Whether the fragment a tray controller belongs to is attached. */
+    private static boolean isFeedAttached(Object controller) {
+        try {
+            Class<?> fragment = Class.forName("androidx.fragment.app.Fragment", false,
+                    controller.getClass().getClassLoader());
+            for (Field field : controller.getClass().getDeclaredFields()) {
+                if (!fragment.isAssignableFrom(field.getType())) continue;
+                field.setAccessible(true);
+                Object owner = field.get(controller);
+                if (owner != null) return (Boolean) fragment.getMethod("isAdded").invoke(owner);
+            }
+        } catch (Throwable ignored) {
+            // a controller Instagram reshaped: its own checks are all there is
+        }
+        return true;
     }
 
     /** Called by the tray controller with the parameters of each story launch it makes. */
@@ -304,6 +334,54 @@ public final class Quoicouview {
         return sInboxResumed ? resumeController() : null;
     }
 
+    // --- The feed page behind the tray ---------------------------------------------
+
+    /**
+     * Called by every check of the main navigation's variant, which reads this
+     * override first: the variant to force, or null to let the server decide.
+     * Instagram has three layouts, picked per account and sometimes per launch: the
+     * one with a tab pager and a Messages tab, an older one with no Messages tab
+     * and each page torn down as it is left, and one whose Home page holds no
+     * stories tray. This mode only stands on the first, so it is forced.
+     */
+    public static Object forcedNavigationVariant(Class<?> variants) {
+        Boolean forced = sForcesVariant;
+        if (forced == null) {
+            if (Config.getAppContext() == null) return null;
+            forced = Config.isQuoicouviewEnabled();
+            sForcesVariant = forced;
+        }
+        if (!forced) return null;
+        if (sForcedVariant == null) {
+            for (Object variant : variants.getEnumConstants()) {
+                if ("REELS_SECOND".equals(((Enum<?>) variant).name())) sForcedVariant = variant;
+            }
+        }
+        return sForcedVariant;
+    }
+
+    /** Settings changes restart the process, and the variant is asked all over the app. */
+    private static Boolean sForcesVariant;
+
+    private static Object sForcedVariant;
+
+    /**
+     * Called by each tab page of the pager as it is created: whether it loads its
+     * content right away, when Instagram says not to. The pages are built empty
+     * and fill up when first shown, and Home's is never shown here if the app did
+     * not start on it (a notification, a link): it holds the stories tray and has
+     * to load anyway.
+     */
+    public static boolean loadsTabEagerly(boolean eager, android.os.Bundle arguments) {
+        try {
+            if (eager || arguments == null || !Config.isQuoicouviewEnabled()) return eager;
+            String tab = arguments.getString("TAB_FRAGMENT_TAG");
+            return tab != null && tab.startsWith("fragment_feed");
+        } catch (Throwable ignored) {
+            return eager;
+        }
+    }
+
     // --- The camera ----------------------------------------------------------------
 
     /**
@@ -335,10 +413,8 @@ public final class Quoicouview {
             boolean pager = pagerId != 0 && (view.getId() == pagerId
                     || (view.getParent() instanceof View && ((View) view.getParent()).getId() == pagerId));
             if (!pager) return canScroll;
-            int tabBarId = Hiders.resolveId(context, "tab_bar");
-            View found = tabBarId == 0 ? null : view.getRootView().findViewById(tabBarId);
-            if (!(found instanceof ViewGroup)) return canScroll;
-            ViewGroup tabBar = (ViewGroup) found;
+            ViewGroup tabBar = Hiders.tabBar(view);
+            if (tabBar == null) return canScroll;
             for (int i = 0; i < tabBar.getChildCount(); i++) {
                 View tab = tabBar.getChildAt(i);
                 if (tab.isSelected()) return false; // no page to reach before it
@@ -440,9 +516,24 @@ public final class Quoicouview {
             ((ViewGroup) placed.getParent()).removeView(placed);
         }
         if (heart.getParent() instanceof ViewGroup) ((ViewGroup) heart.getParent()).removeView(heart);
+        stopHeartBubble(heart);
         buttons.addView(heart, 0);
         sHeart = new WeakReference<>(heart);
         fitHeaderSides(context, buttons);
+    }
+
+    /**
+     * No red bubble under the moved button, its unread dot stays. The bubble closes
+     * when the feed pauses, and the feed stays alive off screen here, so it stayed
+     * up, misplaced, after the notifications were read. The flag is read when the
+     * button attaches to the window, so this goes between its removal and its adding.
+     */
+    private static void stopHeartBubble(View heart) {
+        try {
+            heart.getClass().getMethod("setShouldToast", boolean.class).invoke(heart, false);
+        } catch (Throwable ignored) {
+            // a renamed setter: the bubble stays as Instagram draws it
+        }
     }
 
     /**
@@ -512,7 +603,7 @@ public final class Quoicouview {
     }
 
     /** The list update's single list field (its rows). */
-    private static Field updateList(Object update) {
+    static Field updateList(Object update) {
         Field field = sUpdateList;
         if (field != null && field.getDeclaringClass() == update.getClass()) return field;
         for (Field candidate : update.getClass().getDeclaredFields()) {

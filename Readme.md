@@ -148,7 +148,8 @@ You have two options:
 
 All content blocks are **individual runtime toggles** — long-press the Home
 tab at the bottom-left of the main tab bar (or, if you hid Home, the first icon
-of the bar) to open the Feurstagram settings page and check/uncheck what you
+of the bar; Messages in Quoicouview mode; on tablets, the same icons in the side
+rail) to open the Feurstagram settings page and check/uncheck what you
 want blocked. A single APK covers every
 combination.
 
@@ -161,7 +162,7 @@ combination.
 | **Stories** | Visible | Yes | Network-level blocking |
 | **Suggested accounts** | Blocked | Yes | Network-level + feed-parse blocking |
 | **Instants (+ button in DMs)** | Blocked | Yes | View visibility hidden |
-| **Notes (text bubbles above DMs)** | Blocked | Yes | View visibility hidden |
+| **Notes (text bubbles above DMs)** | Blocked | Yes | Row removed from the inbox list |
 | **Ads** | Blocked | Yes | Network-level + feed-parse blocking |
 | **Analytics & telemetry** | Blocked | No | Always blocked |
 | **Shopping / commerce preloads** | Blocked | No | Always blocked |
@@ -249,7 +250,8 @@ If you open the page and change nothing, Back simply closes it.
 
 The permanent lock freezes your restrictions for this installation. It only
 prevents *relaxing* them: you can still make settings **stricter** (turn a
-block on), but you cannot turn a block back off without reinstalling.
+block on), but you cannot turn a block back off without reinstalling. It also
+freezes **Following feed only** once it is on, so the ranked feed cannot come back.
 
 The freeze is captured per settings session, not the instant you flip a
 switch. When you open the settings page, Feurstagram snapshots which surfaces
@@ -376,7 +378,11 @@ lets a swipe from the main page reach, while Home is the current tab: both "is
 Home current" checks of the tab controller accept Messages, and the tab pager
 tells the swipe navigation it cannot scroll onto the hidden pages left of
 Messages, so the tray's "Your story" (+) and a swipe to the right open the camera. A third patch keeps the hidden
-Home out of the tab Back history.
+Home out of the tab Back history. Instagram has several main layouts, picked per
+account and sometimes per launch: the mode answers the override they all read
+first, so it always gets the one with a tab pager and a Messages tab. The pager's
+pages load when first shown, so the feed's page is told to load right away, for
+launches that do not start on Home.
 
 ### Network Blocking
 A fingerprint matches `TigonServiceLayer.startRequest` (a named class) and

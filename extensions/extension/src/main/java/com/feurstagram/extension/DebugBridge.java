@@ -273,7 +273,7 @@ public final class DebugBridge {
         if (tabBar == null) return "ERROR no tab bar (open the app first)";
         Context context = tabBar.getContext();
         View root = tabBar.getRootView();
-        View bar = root.findViewById(Hiders.resolveId(context, "tab_bar"));
+        View bar = Hiders.tabBar(tabBar);
         StringBuilder out = new StringBuilder();
 
         if (bar instanceof ViewGroup) {

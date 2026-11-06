@@ -865,18 +865,15 @@ public final class Settings {
         /** Whether the live tab bar can be read, so {@link #barOrder} is Instagram's own. */
         static boolean isLive(Context context) {
             if (!(context instanceof Activity)) return false;
-            int barId = Hiders.resolveId(context, "tab_bar");
-            return barId != 0 && ((Activity) context).findViewById(barId) instanceof ViewGroup;
+            return Hiders.tabBar(((Activity) context).getWindow().getDecorView()) != null;
         }
 
         /** The tab ids in the live bar's order, or a fixed order outside the app. */
         static List<String> barOrder(Context context) {
             List<String> out = new ArrayList<>();
             if (context instanceof Activity) {
-                int barId = Hiders.resolveId(context, "tab_bar");
-                View bar = barId == 0 ? null : ((Activity) context).findViewById(barId);
-                if (bar instanceof ViewGroup) {
-                    ViewGroup group = (ViewGroup) bar;
+                ViewGroup group = Hiders.tabBar(((Activity) context).getWindow().getDecorView());
+                if (group != null) {
                     for (int i = 0; i < group.getChildCount(); i++) {
                         int id = group.getChildAt(i).getId();
                         if (id == View.NO_ID) continue;
@@ -998,7 +995,8 @@ public final class Settings {
         }
         showConfirm(context, "Enable permanent lock?",
                 "This is permanent for this installation. You will no longer be able to "
-                        + "re-enable Home feed, Explore, Reels or Stories without reinstalling the app.",
+                        + "re-enable Home feed, Explore, Reels or Stories, or turn off Following feed "
+                        + "only, without reinstalling the app.",
                 "Enable lock", ERROR, ON_ERROR,
                 () -> {
                     Config.enableHardcoreMode();

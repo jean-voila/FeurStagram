@@ -95,10 +95,10 @@ public final class HiddenTabSwipeSkipper {
             View pager = r.getRootView().findViewById(pagerId);
             if (pager == null) return; // not laid out yet; keep waiting
 
-            View tabBar = r.getRootView().findViewById(Hiders.resolveId(context, "tab_bar"));
-            if (!(tabBar instanceof ViewGroup)) return; // keep waiting for the bar
+            ViewGroup tabBar = Hiders.tabBar(r);
+            if (tabBar == null || tabBar.getChildCount() == 0) return; // keep waiting for the bar
 
-            if (attach(pager, (ViewGroup) tabBar)) {
+            if (attach(pager, tabBar)) {
                 detach();
             }
         }

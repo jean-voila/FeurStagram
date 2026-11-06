@@ -76,16 +76,19 @@ public final class Config {
      * navigation-bar icons. The nav icons are cosmetic, but hiding one is how
      * people cut off a surface they keep falling back into (the Direct tab's
      * search behaves like Explore), so leaving them freely re-enabled defeated
-     * the lock — issue #93.
+     * the lock — issue #93. "Following feed only" counts too: it is what keeps the
+     * ranked feed away for people who keep the feed itself — issue #150.
      */
     public static boolean isLockable(String key) {
-        return key != null && (key.startsWith("block_") || key.startsWith("nav_show_"));
+        return key != null && (key.startsWith("block_") || key.startsWith("nav_show_")
+                || "limit_following_feed".equals(key));
     }
 
     /**
      * Whether this value leaves the surface hidden. The two families store
-     * opposite polarities: {@code block_*} is true when hidden, {@code nav_show_*}
-     * is true when shown.
+     * opposite polarities: {@code block_*} (and {@code limit_following_feed}, which
+     * hides the ranked feed) is true when hidden, {@code nav_show_*} is true when
+     * shown.
      */
     public static boolean hidesSurface(String key, boolean value) {
         if (key == null) return false;
@@ -117,8 +120,8 @@ public final class Config {
 
     /**
      * Whether the home feed is restricted to accounts you follow (chronological
-     * "Following" feed) instead of the recommended feed. Off by default. Not a
-     * block_* surface, so the permanent lock never freezes it.
+     * "Following" feed) instead of the recommended feed. Off by default. The
+     * permanent lock freezes it once it is on (see {@link #isLockable}).
      */
     public static boolean isFollowingFeedOnly() {
         return getBlocked("limit_following_feed", false);
@@ -282,6 +285,7 @@ public final class Config {
         baseline.put("block_notes", isNotesBlocked());
         baseline.put("block_suggested", isSuggestedBlocked());
         baseline.put("block_ads", isAdsBlocked());
+        baseline.put("limit_following_feed", isFollowingFeedOnly());
         for (String key : NAV_KEYS) {
             baseline.put(key, getBlocked(key, navDefault(key)));
         }

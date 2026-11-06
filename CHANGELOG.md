@@ -6,6 +6,59 @@ All notable changes to Feurstagram should be documented in this file.
 
 Nothing yet.
 
+## v454-0-0-54-77
+
+### Added
+- **Permanent lock covers "Following feed only"** (#150). `limit_following_feed`
+  is lockable, with the polarity of a `block_*` key (true keeps the ranked feed
+  away) and a place in the session baseline: once on and baked in by Done, it can
+  no longer be turned off without reinstalling. Turning it on stays possible
+  under the lock.
+
+### Fixed
+- **Quoicouview: no more stuck red bubble under the heart.** Instagram's bubble
+  (`ToastingBadge`'s tooltip, "2 new followers") closes when the feed pauses; the feed
+  stays alive off screen in this mode, so the bubble stayed up, misplaced, after the
+  notifications were read. `Quoicouview.adoptHeart` now calls `setShouldToast(false)`
+  between removing the button and adding it, since the flag is read when it attaches.
+  The unread dot stays, and nothing changes outside the mode.
+- **Stories tray missing in Quoicouview mode** (#156). Three separate causes:
+  - Instagram has three main layouts, picked per account and sometimes per launch:
+    the one the mode was built on (tab pager, Messages tab), an older one (no
+    Messages tab, no pager, the feed shown with no Home icon), and "homecoming"
+    (`feed_switcher` tab, whose Home page holds no tray). All three read the same
+    developer override first, `(UserSession)` → navigation variant enum, so the
+    *Quoicouview mode* patch has it answer `REELS_SECOND` while the mode is on. Off,
+    the server still decides.
+  - Pager pages are built empty and load when first shown. Started anywhere but on
+    Home (a notification, a link), the feed never loaded, so there was no tray to
+    move. `IgSwipeableTabHostFragment.onCreate` reads `EAGER_FRAGMENT_LOADING`; its
+    answer now goes through `Quoicouview.loadsTabEagerly`, true for the feed's page.
+  - The inbox could resume before the feed was attached, and passing that resume to
+    the tray controller crashed the app ("Fragment MainFeedFragment not attached to
+    an activity", seen on the first launch after an update). `resumeController` now
+    checks `isAdded()`, and `resumeLateController` delivers the missed resume on a
+    later layout pass, which also restores the closing animation in these launches.
+- **Notes block on accounts with the Compose inbox** (#144). On those accounts the
+  tray is a `ComposeView` row with no resource id, so hiding `cf_hub_recycler_view`
+  did nothing. The new *Notes tray* patch takes the tray's list model from its bind
+  logger (`notes_tray_bind_`), the same model for both drawings, and
+  `Hiders.onListUpdate` drops that row from every list update while Notes are
+  blocked. The row is gone on the view-based inbox too, spacing included.
+- **Tablets and large screens** (#160). There the tabs live in a side rail,
+  `ls_nav_bar`, and `tab_bar` stays in the layout, empty: the settings gesture never
+  installed, so the settings were unreachable, and Home could not be hidden.
+  `Hiders.tabBar` now returns whichever bar holds the tabs, and the swipe skipper,
+  the navigation preview and the Quoicouview scroll check go through it. The rail's
+  `news_tab` follows the Notifications button toggle.
+
+### Changed
+- **Quoicouview: long-press Messages for the settings**, wherever the layout puts
+  that icon (on the rail, Search comes first).
+- **Instagram 454.0.0.54.77.** No fingerprint changed. This APKMirror bundle has no
+  `helium` / `executorch` / `pytorch` feature splits and packs its native libraries
+  in `assets/lib/libs.spo`, so the APK is about 160 MB instead of 420 MB.
+
 ## v454-0-0-13-77
 
 ### Changed

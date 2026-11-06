@@ -21,7 +21,7 @@ public final class Hiders {
     public static void installAll(ViewGroup root) {
         if (root == null) return;
         ViewTreeObserver observer = root.getViewTreeObserver();
-        // Notes tray, Instants entry-points.
+        // Notes tray (also taken out of the inbox's list, see onListUpdate), Instants entry-points.
         observer.addOnGlobalLayoutListener(new VisibilityHider(root, "block_notes", "cf_hub_recycler_view"));
         observer.addOnGlobalLayoutListener(new VisibilityHider(root, "block_instants",
                 "creation_entrypoint", "direct_quick_snap_consumption_preview"));
@@ -31,6 +31,9 @@ public final class Hiders {
         // an unscoped search could hide that badge instead.
         observer.addOnGlobalLayoutListener(new VisibilityHider(root, "block_notifications",
                 false, false, "action_bar_buttons_container_right", "notification"));
+        // On large screens that button is a tab of the side rail.
+        observer.addOnGlobalLayoutListener(new VisibilityHider(root, "block_notifications",
+                false, false, "ls_nav_bar", "news_tab"));
         // Bottom-navigation icons, each shown/hidden independently. These use the
         // inverted "nav_show_<tab>" preference (true = shown). Home has its own
         // hider: it carries the settings gesture, so it may only go when another
@@ -123,15 +126,63 @@ public final class Hiders {
         return null;
     }
 
-    /** The bottom tab bar in the window holding {@code view}, or null if it is not laid out. */
+    /**
+     * The bar holding the tabs in the window of {@code view}, or null if it is not
+     * laid out: the bottom bar, or on large screens (tablets, unfolded phones) the
+     * side rail, where the bottom bar stays in the layout, empty (issue #160).
+     */
     static ViewGroup tabBar(View view) {
         if (view == null) return null;
         Context context = view.getContext();
         View window = view.getRootView();
         if (context == null || window == null) return null;
-        int id = resolveId(context, "tab_bar");
+        ViewGroup bottom = barById(window, context, "tab_bar");
+        if (bottom != null && bottom.getChildCount() > 0) return bottom;
+        ViewGroup rail = barById(window, context, "ls_nav_bar");
+        return rail != null && rail.getChildCount() > 0 ? rail : bottom;
+    }
+
+    private static ViewGroup barById(View window, Context context, String name) {
+        int id = resolveId(context, name);
         View bar = id == 0 ? null : window.findViewById(id);
         return bar instanceof ViewGroup ? (ViewGroup) bar : null;
+    }
+
+    /**
+     * Whether a row of a list is the Notes tray. The tray's list model is
+     * obfuscated, so the Notes tray patch rewrites this body with a check for it.
+     */
+    static boolean isNotesRow(Object row) {
+        return false;
+    }
+
+    /**
+     * Called with every list update an {@code IgRecyclerViewAdapter} applies: takes
+     * the Notes tray out when Notes are blocked. Instagram draws that row either
+     * around {@code cf_hub_recycler_view} or, on some accounts, with Compose and no
+     * resource id at all, so the row itself goes rather than a view (issue #144).
+     */
+    public static void onListUpdate(Object update) {
+        try {
+            if (update == null || !Config.isNotesBlocked()) return;
+            java.lang.reflect.Field field = Quoicouview.updateList(update);
+            if (field == null) return;
+            @SuppressWarnings("unchecked")
+            java.util.List<Object> rows = (java.util.List<Object>) field.get(update);
+            if (rows == null) return;
+            java.util.List<Object> kept = null;
+            for (int i = 0; i < rows.size(); i++) {
+                Object row = rows.get(i);
+                if (isNotesRow(row)) {
+                    if (kept == null) kept = new java.util.ArrayList<>(rows.subList(0, i));
+                } else if (kept != null) {
+                    kept.add(row);
+                }
+            }
+            if (kept != null) field.set(update, kept);
+        } catch (Throwable ignored) {
+            // the list goes through as Instagram built it
+        }
     }
 
     /** A tab's resource name ("feed_tab", "direct_tab", ...), or null. */
@@ -163,11 +214,19 @@ public final class Hiders {
 
     /**
      * The tab whose long-press opens the settings: Home while it is on the bar,
-     * otherwise the first icon still shown. Null until the bar is laid out.
+     * otherwise Messages in Quoicouview mode and the first icon still shown out of
+     * it. Null until the bar is laid out.
      */
     static View settingsTab(View anyView) {
         ViewGroup bar = tabBar(anyView);
         if (bar == null) return null;
+        // Messages is the main page there, wherever the layout puts its icon.
+        if (Config.isQuoicouviewEnabled()) {
+            for (int i = 0; i < bar.getChildCount(); i++) {
+                View tab = bar.getChildAt(i);
+                if ("direct_tab".equals(tabName(tab))) return tab;
+            }
+        }
         View home = null;
         for (int i = 0; i < bar.getChildCount(); i++) {
             View tab = bar.getChildAt(i);
