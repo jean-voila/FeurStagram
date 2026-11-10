@@ -1,9 +1,9 @@
 package com.feurstagram.patches.network
 
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.instructions
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.util.addInstructionsAtControlFlowLabel
 import app.morphe.util.getReference
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
@@ -59,7 +59,8 @@ val limitFeedToFollowingPatch = bytecodePatch(
         }
 
         // In the constructor, wrap the value stored into that header field with
-        // our rewriter, just before the store.
+        // our rewriter, just before the store. At the store's label, so a branch
+        // that jumps straight to the store is rewritten too.
         InitMainFeedRequestFingerprint.method.apply {
             val store = instructions.first {
                 it.opcode == Opcode.IPUT_OBJECT &&
@@ -67,7 +68,7 @@ val limitFeedToFollowingPatch = bytecodePatch(
             }
             val headerRegister = (store as TwoRegisterInstruction).registerA
 
-            addInstructions(
+            addInstructionsAtControlFlowLabel(
                 store.location.index,
                 "invoke-static/range { v$headerRegister .. v$headerRegister }, " +
                     "$LIMIT_FEED_CLASS->setFollowingHeader(Ljava/util/Map;)Ljava/util/Map;\n" +

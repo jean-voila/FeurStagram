@@ -52,6 +52,9 @@ val backHistoryPatch = bytecodePatch(
             val result = instructions[depth.location.index + 1]
             if (result.opcode != Opcode.MOVE_RESULT) throw PatchException("Tab history depth not kept")
             val register = (result as OneRegisterInstruction).registerA
+            // move-result may reuse the Stack's register; the hook would then get an
+            // int as its List and fail verification on the device.
+            if (register == history) throw PatchException("Tab history depth overwrites the history register")
             addInstructions(
                 result.location.index + 1,
                 """

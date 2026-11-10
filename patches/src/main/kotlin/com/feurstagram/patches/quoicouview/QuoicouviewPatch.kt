@@ -11,6 +11,7 @@ import app.morphe.patcher.util.proxy.mutableTypes.MutableClass
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
 import app.morphe.patcher.util.smali.ExternalLabel
+import app.morphe.util.addInstructionsAtControlFlowLabel
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
@@ -254,7 +255,7 @@ val quoicouviewPatch = bytecodePatch(
 
         igAdapterApply().addInstructions(
             0,
-            "invoke-static { p0, p1 }, $QUOICOUVIEW->onListUpdate(Ljava/lang/Object;Ljava/lang/Object;)V",
+            "invoke-static/range { p0 .. p1 }, $QUOICOUVIEW->onListUpdate(Ljava/lang/Object;Ljava/lang/Object;)V",
         )
 
         // --- The layout the mode stands on: a tab pager, with a Messages tab -------------
@@ -304,6 +305,9 @@ val quoicouviewPatch = bytecodePatch(
             ) throw PatchException("Tab page no longer reads its loading flag")
             val eager = (result as OneRegisterInstruction).registerA
             val arguments = (read as FiveRegisterInstruction).registerC
+            // move-result may reuse the Bundle's register; the hook would then get a
+            // boolean as its Bundle and fail verification on the device.
+            if (eager == arguments) throw PatchException("Tab page loading flag overwrites its arguments register")
             addInstructions(
                 result.location.index + 1,
                 """
@@ -321,12 +325,14 @@ val quoicouviewPatch = bytecodePatch(
         StoryLaunchEnvironmentFingerprint.method.apply {
             val returns = instructions.filter { it.opcode == Opcode.RETURN }
             if (returns.isEmpty()) throw PatchException("Story launch environment check has no return")
+            // At each return's label: a branch that jumps to the return would skip
+            // a plain insert. The returned register is a boolean on every path.
             returns.reversed().forEach { ret ->
                 val register = (ret as OneRegisterInstruction).registerA
-                addInstructions(
+                addInstructionsAtControlFlowLabel(
                     ret.location.index,
                     """
-                        invoke-static { v$register }, $QUOICOUVIEW->isStoryTrayVisible(Z)Z
+                        invoke-static/range { v$register .. v$register }, $QUOICOUVIEW->isStoryTrayVisible(Z)Z
                         move-result v$register
                     """,
                 )
@@ -347,7 +353,7 @@ val quoicouviewPatch = bytecodePatch(
                 addInstructions(
                     result.location.index + 1,
                     """
-                        invoke-static { v$register }, $QUOICOUVIEW->isStoryTrayVisible(Z)Z
+                        invoke-static/range { v$register .. v$register }, $QUOICOUVIEW->isStoryTrayVisible(Z)Z
                         move-result v$register
                     """,
                 )
