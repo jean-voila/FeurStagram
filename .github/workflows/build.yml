@@ -22,6 +22,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # The build runs code from the pull request (Gradle scripts, the
+          # wrapper): do not leave the token in .git/config for it.
+          persist-credentials: false
+
+      # A pull request could swap gradle-wrapper.jar for a modified one, which
+      # would then run here and on the machine of anyone who builds the branch.
+      # This checks it against the checksums Gradle publishes.
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
 
       - name: Setup Java
         uses: actions/setup-java@v6
@@ -39,7 +49,7 @@ jobs:
 
       - name: Upload test reports
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-reports
           path: '**/build/reports/tests/'
