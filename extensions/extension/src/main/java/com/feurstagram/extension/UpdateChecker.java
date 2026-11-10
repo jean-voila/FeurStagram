@@ -127,8 +127,25 @@ public final class UpdateChecker implements Runnable {
         checkAutomatically(activity);
     }
 
+    /**
+     * Least time between two automatic checks in one process. A return to the
+     * app triggers one, and quick app switching would otherwise send a request
+     * each time, against GitHub's 60 unauthenticated requests an hour per IP
+     * address, which everyone behind the same carrier NAT shares. (A conditional
+     * request does not help: without a token, a 304 counts as well.) A cold start
+     * always checks, and so does the manual "check now".
+     */
+    private static final long RECHECK_INTERVAL_MS = 15 * 60 * 1000L;
+
+    /** SystemClock.elapsedRealtime() of the last automatic check, 0 if none (main thread). */
+    private static long lastAutomaticCheck;
+
     private static void checkAutomatically(Activity activity) {
-        if (!Config.isAutoUpdateEnabled() || !automaticCheckRunning.compareAndSet(false, true)) return;
+        if (!Config.isAutoUpdateEnabled()) return;
+        long now = SystemClock.elapsedRealtime();
+        if (lastAutomaticCheck != 0 && now - lastAutomaticCheck < RECHECK_INTERVAL_MS) return;
+        if (!automaticCheckRunning.compareAndSet(false, true)) return;
+        lastAutomaticCheck = now;
         if (DebugBridge.isNetworkTraceEnabled()) Log.i("FeurUpdate", "automatic check started");
         new Thread(new UpdateChecker(activity, false), "FeurStagram-update-check").start();
     }
