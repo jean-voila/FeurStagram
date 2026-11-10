@@ -86,9 +86,9 @@ public class UpdateCheckerTest {
     @Test
     public void parseWithoutADigestSkipsTheCheck() throws Exception {
         JSONObject json = new JSONObject("{\"tag_name\":\"v1\",\"assets\":["
-                + "{\"browser_download_url\":\"https://example.com/a.apk\",\"size\":3}]}");
+                + "{\"browser_download_url\":\"https://github.com/o/r/releases/download/v1/a.apk\",\"size\":3}]}");
         UpdateChecker.Release release = UpdateChecker.Release.parse(json, false);
-        assertEquals("https://example.com/a.apk", release.apkUrl);
+        assertEquals("https://github.com/o/r/releases/download/v1/a.apk", release.apkUrl);
         assertNull(release.sha256);
     }
 
@@ -98,6 +98,40 @@ public class UpdateCheckerTest {
         assertNull(UpdateChecker.sha256("md5:d41d8cd98f00b204e9800998ecf8427e"));
         assertNull(UpdateChecker.sha256("sha256:1234"));
         assertNull(UpdateChecker.sha256("sha256:zz52008d795b5cd4805a3b4daec70bfde51df8c6377b7fe1c4a90e837fd74a7"));
+    }
+
+    @Test
+    public void onlyHttpsGithubDownloadsAreOffered() throws Exception {
+        String asset = "https://github.com/jean-voila/FeurStagram/releases/download/v1/feurstagram-1.apk";
+        assertEquals(asset, UpdateChecker.githubDownload(asset));
+        assertEquals("https://GitHub.com/a.apk", UpdateChecker.githubDownload("https://GitHub.com/a.apk"));
+        assertNull(UpdateChecker.githubDownload("http://github.com/a.apk"));
+        assertNull(UpdateChecker.githubDownload("https://github.com.evil.example/a.apk"));
+        assertNull(UpdateChecker.githubDownload("https://evil.example/github.com/a.apk"));
+        assertNull(UpdateChecker.githubDownload("https://github.com@evil.example/a.apk"));
+        assertNull(UpdateChecker.githubDownload("https://user@github.com/a.apk"));
+        assertNull(UpdateChecker.githubDownload("https://github.com:8443/a.apk"));
+        assertNull(UpdateChecker.githubDownload("not a url"));
+        assertNull(UpdateChecker.githubDownload(null));
+
+        JSONObject json = new JSONObject("{\"tag_name\":\"v1\",\"assets\":["
+                + "{\"browser_download_url\":\"https://evil.example/a.apk\",\"size\":3}]}");
+        assertNull(UpdateChecker.Release.parse(json, false).apkUrl);
+    }
+
+    @Test
+    public void installConfirmationMustTargetAnotherApp() {
+        String own = "com.instagram.android";
+        // What the system sends: addressed to the package installer, no component.
+        assertTrue(UpdateChecker.isForeignTarget("com.google.android.packageinstaller", null, own));
+        assertTrue(UpdateChecker.isForeignTarget("com.android.packageinstaller",
+                "com.android.packageinstaller", own));
+        // A forged callback aiming at this app, or unaddressed, is refused.
+        assertFalse(UpdateChecker.isForeignTarget(own, null, own));
+        assertFalse(UpdateChecker.isForeignTarget(null, null, own));
+        assertFalse(UpdateChecker.isForeignTarget("", null, own));
+        assertFalse(UpdateChecker.isForeignTarget(null, own, own));
+        assertFalse(UpdateChecker.isForeignTarget("com.android.packageinstaller", own, own));
     }
 
     @Test
