@@ -33,20 +33,39 @@ public final class Config {
 
     private Config() {}
 
+    /**
+     * The Application and its preferences, once resolved. Every toggle read goes
+     * through prefs(), and some run on every network request (Block) or layout
+     * pass (Hiders), so the reflective lookup is done once per process. Both stay
+     * null, and are looked up again, until the Application exists.
+     */
+    private static volatile Context sAppContext;
+    private static volatile SharedPreferences sPrefs;
+
     /** Resolve the process Application context via ActivityThread, or null. */
     public static Context getAppContext() {
+        Context context = sAppContext;
+        if (context != null) return context;
         try {
             Class<?> activityThread = Class.forName("android.app.ActivityThread");
-            Object app = activityThread.getMethod("currentApplication").invoke(null);
-            return (Context) app;
+            context = (Context) activityThread.getMethod("currentApplication").invoke(null);
         } catch (Throwable t) {
             return null;
         }
+        sAppContext = context;
+        return context;
     }
 
     private static SharedPreferences prefs() {
+        SharedPreferences prefs = sPrefs;
+        if (prefs != null) return prefs;
         Context context = getAppContext();
-        return context == null ? null : context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        if (context == null) return null;
+        // The system hands out one instance per file and process, so keeping it
+        // changes nothing about what is read or written.
+        prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        sPrefs = prefs;
+        return prefs;
     }
 
     public static boolean getBlocked(String key, boolean defaultValue) {

@@ -7,6 +7,8 @@ import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.widget.HorizontalScrollView;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * UI-level hiders and the landing-page redirect, all installed on the main
  * tab bar. Each is a persistent global-layout listener that resolves its
@@ -55,12 +57,23 @@ public final class Hiders {
         Quoicouview.install(root);
     }
 
+    /**
+     * Resolved view ids by name. The layout listeners resolve the same names on
+     * every layout pass, and getIdentifier is a slow name lookup; an id cannot
+     * change while the process lives, so each name is looked up once (a missing
+     * one too, as 0).
+     */
+    private static final ConcurrentHashMap<String, Integer> IDS = new ConcurrentHashMap<>();
+
     static int resolveId(Context context, String name) {
+        Integer cached = IDS.get(name);
+        if (cached != null) return cached;
         Resources resources = context.getResources();
         int id = resources.getIdentifier(name, "id", context.getPackageName());
         if (id == 0) {
             id = resources.getIdentifier(name, "id", "com.instagram.android");
         }
+        IDS.put(name, id);
         return id;
     }
 
