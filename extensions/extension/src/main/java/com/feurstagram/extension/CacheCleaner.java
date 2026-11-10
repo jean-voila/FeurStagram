@@ -116,9 +116,10 @@ public final class CacheCleaner implements Runnable {
             "pending_reel_tray_seen_states",
             "pending_reel_seen_states",
             "pending_clips_seen_states",
-            "pending_reel_quiz_responses",
-            "pending_reel_slider_votes",
-            "pending_reel_countdown_follow_requests",
+            // Not pending_reel_quiz_responses, pending_reel_slider_votes or
+            // pending_reel_countdown_follow_requests: those queue answers, votes and
+            // follows the user made that are not sent yet, so wiping them loses
+            // the user's actions, not cached content.
             "ExoPlayerCacheDir/videoprefetchcache",
             "ExoPlayerCacheDir/videocachemetadata",
             "files/ExoPlayerCacheDir",
