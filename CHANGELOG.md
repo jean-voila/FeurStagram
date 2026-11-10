@@ -23,7 +23,22 @@ All notable changes to Feurstagram should be documented in this file.
 - **Clone:** only the app's own `<provider>` authorities are renamed (not the
   `<queries>` entries naming other apps), and all of a `a;b` list, not the first.
 
+### Security
+- **In-app update:** the install callback only starts a confirmation addressed
+  to another package (the system's package installer), with URI grant flags,
+  clip data and selector removed. Below Android 13 that callback can come from
+  any app. The APK is downloaded to internal storage instead of the external
+  app directory, and only from an HTTPS github.com URL.
+- **Debug bridge** (debug builds only) takes broadcasts only from senders
+  holding `DUMP`, i.e. the adb shell, not from other apps.
+
 ### Changed
+- **Hiders do nothing when nothing is hidden.** They no longer walk the window
+  on every layout pass, nor force their views visible over Instagram's own
+  choice, when their toggle is off.
+- **Automatic update checks** are at least 15 minutes apart within a process
+  (a cold start always checks), so quick app switching no longer sends a GitHub
+  request each time.
 - **Update check:** the release JSON is read with `org.json` instead of a
   hand-written parser, and the downloaded APK is checked against the SHA-256
   digest GitHub publishes for each asset before it is handed to Android.
@@ -40,7 +55,7 @@ All notable changes to Feurstagram should be documented in this file.
 ### Build
 - GitHub Actions builds the patch bundle and runs the new unit tests (update
   check, permanent-lock rules, network and feed blocking) on every push and pull
-  request.
+  request, after validating the Gradle wrapper.
 - `build.sh` passes the keystore passwords to `apksigner` through the
   environment instead of the command line (visible in `ps`), rejects unknown
   options instead of silently dropping them, and finds a JDK 21 under
