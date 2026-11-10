@@ -46,14 +46,16 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.List;
+import java.security.MessageDigest;
 import java.util.Locale;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.Collections;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 /**
  * Checks GitHub for a newer Feurstagram release and, if found, shows what changed
@@ -183,7 +185,8 @@ public final class UpdateChecker implements Runnable {
         try {
             String body = fetch(LATEST_API);
 
-            String tag = extractTagName(body);
+            JSONObject json = new JSONObject(body);
+            String tag = string(json, "tag_name");
             if (tag == null) {
                 if (manual) ui.post(() -> toast("Update check failed"));
                 return;
@@ -191,14 +194,12 @@ public final class UpdateChecker implements Runnable {
 
             String installed = installedVersion();
             if (isNewer(normalize(tag), installed)) {
-                final String apkUrl = extractApkUrl(body, isCloneBuild());
-                final String notes = extractReleaseBody(body);
-                final long size = extractApkSize(body, isCloneBuild());
+                final Release release = Release.parse(json, isCloneBuild());
                 ui.post(() -> {
                     Context target = manual ? context : foregroundActivity.get();
                     if (target instanceof Activity
                             && !((Activity) target).isFinishing() && !((Activity) target).isDestroyed()) {
-                        showPrompt(target, new Release(tag, notes, apkUrl, size), installed);
+                        showPrompt(target, release, installed);
                     }
                 });
             } else if (manual) {
@@ -243,131 +244,86 @@ public final class UpdateChecker implements Runnable {
     }
 
     /** Everything the prompt and the download need about the release on offer. */
-    private static final class Release {
+    static final class Release {
         final String tag;
         final String notes;
         final String apkUrl;
         final long size;
+        /** Lowercase hex SHA-256 of the asset, as GitHub reports it, or null. */
+        final String sha256;
 
-        Release(String tag, String notes, String apkUrl, long size) {
+        Release(String tag, String notes, String apkUrl, long size, String sha256) {
             this.tag = tag;
             this.notes = notes;
             this.apkUrl = apkUrl;
             this.size = size;
+            this.sha256 = sha256;
+        }
+
+        /**
+         * Read a release from GitHub's release JSON, with the .apk asset this build
+         * downloads: the "-clone.apk" asset for a clone install, the plain ".apk"
+         * one otherwise. Without such an asset, apkUrl and sha256 are null and size
+         * is -1.
+         */
+        static Release parse(JSONObject json, boolean clone) {
+            JSONObject asset = apkAsset(json, clone);
+            return new Release(
+                    string(json, "tag_name"),
+                    releaseNotes(json),
+                    string(asset, "browser_download_url"),
+                    asset == null ? -1 : asset.optLong("size", -1),
+                    sha256(string(asset, "digest")));
         }
     }
 
     // --- Release JSON -------------------------------------------------------
 
-    /** Pull the first "tag_name":"..." value out of the release JSON. */
-    private static String extractTagName(String json) {
-        return stringField(json, "\"tag_name\"", 0);
-    }
-
-    /** The release description (Markdown), unescaped, or null. */
-    static String extractReleaseBody(String json) {
-        String raw = stringField(json, "\"body\"", 0);
-        return raw == null || raw.trim().isEmpty() ? null : raw;
-    }
-
     /**
-     * Read the JSON string value that follows {@code key} at or after {@code from},
-     * decoding the backslash escapes GitHub actually emits: newline, carriage
-     * return, tab, quote, backslash, slash and 4-digit hex code points.
-     * Returns null when the key is absent or the value isn't a string.
+     * A string field, or null when the object or the field is missing or the value
+     * is JSON null (optString alone would return the text "null" for that).
      */
-    private static String stringField(String json, String key, int from) {
-        if (json == null) return null;
-        int at = json.indexOf(key, from);
-        if (at < 0) return null;
-        int colon = json.indexOf(':', at + key.length());
-        if (colon < 0) return null;
-        int open = colon + 1;
-        while (open < json.length() && Character.isWhitespace(json.charAt(open))) open++;
-        if (open >= json.length() || json.charAt(open) != '"') return null;
-
-        StringBuilder out = new StringBuilder();
-        for (int i = open + 1; i < json.length(); i++) {
-            char c = json.charAt(i);
-            if (c == '"') return out.toString();
-            if (c != '\\') {
-                out.append(c);
-                continue;
-            }
-            if (++i >= json.length()) break;
-            char escape = json.charAt(i);
-            switch (escape) {
-                case 'n': out.append('\n'); break;
-                case 'r': break;               // CRLF -> LF
-                case 't': out.append('\t'); break;
-                case 'b': case 'f': break;
-                case 'u':
-                    if (i + 4 < json.length()) {
-                        try {
-                            out.append((char) Integer.parseInt(json.substring(i + 1, i + 5), 16));
-                        } catch (Throwable ignored) {
-                        }
-                        i += 4;
-                    }
-                    break;
-                default: out.append(escape); break; // " \ /
-            }
-        }
-        return out.toString();
+    static String string(JSONObject object, String key) {
+        return object == null || object.isNull(key) ? null : object.optString(key, null);
     }
 
-    /**
-     * Pick the download URL of the .apk asset matching this build: the
-     * "-clone.apk" asset for a clone install, the plain ".apk" asset otherwise.
-     * Returns null when no suitable asset is present.
-     */
-    static String extractApkUrl(String json, boolean clone) {
-        if (json == null) return null;
-        List<String> urls = new ArrayList<>();
-        int idx = 0;
-        while (true) {
-            String url = stringField(json, "\"browser_download_url\"", idx);
-            if (url == null) break;
-            urls.add(url);
-            idx = json.indexOf("\"browser_download_url\"", idx) + 1;
-        }
-        for (String url : urls) {
-            if (!url.endsWith(".apk")) continue;
-            boolean cloneAsset = url.endsWith("-clone.apk");
-            if (cloneAsset == clone) return url;
+    /** The release description (Markdown, CRLF turned into LF), or null when blank. */
+    static String releaseNotes(JSONObject json) {
+        String body = string(json, "body");
+        if (body == null || body.trim().isEmpty()) return null;
+        return body.replace("\r", "");
+    }
+
+    /** The .apk asset matching this build (see {@link Release#parse}), or null. */
+    static JSONObject apkAsset(JSONObject json, boolean clone) {
+        JSONArray assets = json == null ? null : json.optJSONArray("assets");
+        if (assets == null) return null;
+        for (int i = 0; i < assets.length(); i++) {
+            JSONObject asset = assets.optJSONObject(i);
+            String url = string(asset, "browser_download_url");
+            if (url == null || !url.endsWith(".apk")) continue;
+            if (url.endsWith("-clone.apk") == clone) return asset;
         }
         return null;
     }
 
     /**
-     * Byte size of the asset this build would download, or -1. Used to show a
-     * total before the first byte arrives; the server's Content-Length wins once
-     * the download starts.
+     * GitHub's asset digest, "sha256:&lt;hex&gt;", as lowercase hex. Null for a
+     * missing digest (older releases have none) or any other form, in which case
+     * the download is not checked.
      */
-    static long extractApkSize(String json, boolean clone) {
-        if (json == null) return -1;
-        int idx = 0;
-        while (true) {
-            int at = json.indexOf("\"browser_download_url\"", idx);
-            if (at < 0) return -1;
-            String url = stringField(json, "\"browser_download_url\"", idx);
-            idx = at + 1;
-            if (url == null || !url.endsWith(".apk")) continue;
-            if (url.endsWith("-clone.apk") != clone) continue;
-            // "size" belongs to the same asset object, and GitHub emits it before
-            // browser_download_url — so search backwards from this asset's start.
-            int assetStart = json.lastIndexOf('{', at);
-            int size = assetStart < 0 ? -1 : json.indexOf("\"size\"", assetStart);
-            if (size < 0 || size > at) return -1;
-            int colon = json.indexOf(':', size);
-            int end = colon;
-            while (end + 1 < json.length() && Character.isDigit(json.charAt(end + 1))) end++;
-            try {
-                return Long.parseLong(json.substring(colon + 1, end + 1).trim());
-            } catch (Throwable t) {
-                return -1;
-            }
+    static String sha256(String digest) {
+        if (digest == null || !digest.startsWith("sha256:")) return null;
+        String hex = digest.substring("sha256:".length()).trim().toLowerCase(Locale.ROOT);
+        return hex.matches("[0-9a-f]{64}") ? hex : null;
+    }
+
+    static String toHex(byte[] bytes) {
+        StringBuilder out = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) {
+            out.append(Character.forDigit((b >> 4) & 0xF, 16)).append(Character.forDigit(b & 0xF, 16));
         }
+        return out.toString();
     }
 
     /** "v434-0-0-44-74" -> "434.0.0.44.74" so it matches the installed versionName. */
@@ -461,8 +417,7 @@ public final class UpdateChecker implements Runnable {
     private static void loadNotes(Context context, String tag, String version, boolean markSeen) {
         Handler ui = new Handler(Looper.getMainLooper());
         try {
-            String json = fetch(RELEASE_BY_TAG + tag);
-            final String notes = extractReleaseBody(json);
+            final String notes = releaseNotes(new JSONObject(fetch(RELEASE_BY_TAG + tag)));
             if (notes != null) {
                 ui.post(() -> showWhatsNew(context, version, notes));
             }
@@ -479,9 +434,9 @@ public final class UpdateChecker implements Runnable {
     static void showLatestNotes(final Context context) {
         new Thread(() -> {
             try {
-                String json = fetch(LATEST_API);
-                String tag = extractTagName(json);
-                String notes = extractReleaseBody(json);
+                JSONObject json = new JSONObject(fetch(LATEST_API));
+                String tag = string(json, "tag_name");
+                String notes = releaseNotes(json);
                 if (notes == null) return;
                 new Handler(Looper.getMainLooper())
                         .post(() -> showWhatsNew(context, tag == null ? "" : tag, notes));
@@ -941,6 +896,9 @@ public final class UpdateChecker implements Runnable {
                 if (total <= 0) total = release.size;
                 setStatus("Downloading update…");
 
+                // Hashed as it arrives, so a corrupted or truncated file is caught
+                // before Android is handed it. Older releases have no digest.
+                MessageDigest sha = release.sha256 == null ? null : MessageDigest.getInstance("SHA-256");
                 long done = 0;
                 long lastPost = 0;
                 byte[] buffer = new byte[131072];
@@ -950,6 +908,7 @@ public final class UpdateChecker implements Runnable {
                     while ((n = in.read(buffer)) > 0) {
                         if (cancelled) break;
                         out.write(buffer, 0, n);
+                        if (sha != null) sha.update(buffer, 0, n);
                         done += n;
                         // Repainting on every 128 KB chunk would post hundreds of
                         // runnables a second; a percent of the file is plenty.
@@ -970,6 +929,11 @@ public final class UpdateChecker implements Runnable {
 
                 if (total > 0 && done < total) {
                     throw new IllegalStateException("truncated download");
+                }
+                if (sha != null && !release.sha256.equals(toHex(sha.digest()))) {
+                    dest.delete();
+                    fail("Update download is corrupted (checksum mismatch).");
+                    return;
                 }
 
                 setStatus("Preparing installation…");
