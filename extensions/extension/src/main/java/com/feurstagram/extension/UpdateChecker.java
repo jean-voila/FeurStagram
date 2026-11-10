@@ -21,9 +21,9 @@ import android.graphics.drawable.LayerDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.TypedValue;
 import android.util.Log;
 import android.view.Gravity;
@@ -44,6 +44,7 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.lang.ref.WeakReference;
 import java.security.MessageDigest;
@@ -85,7 +86,12 @@ public final class UpdateChecker implements Runnable {
     /** Action prefix for the per-session PackageInstaller status callback. */
     private static final String INSTALL_ACTION = "com.feurstagram.extension.INSTALL_STATUS";
 
-    /** Where the download lands (app-specific external dir, no permission needed). */
+    /**
+     * Where the download lands: the app's internal cache. Up to Android 9 the
+     * app-specific external directory is writable by any app holding the storage
+     * permission, which could swap the file between its download (and digest
+     * check) and its staging. The system may reclaim a leftover file.
+     */
     private static final String UPDATE_FILE_NAME = "feurstagram-update.apk";
 
     private static boolean launchWatcherInstalled;
@@ -271,7 +277,7 @@ public final class UpdateChecker implements Runnable {
             return new Release(
                     string(json, "tag_name"),
                     releaseNotes(json),
-                    string(asset, "browser_download_url"),
+                    githubDownload(string(asset, "browser_download_url")),
                     asset == null ? -1 : asset.optLong("size", -1),
                     sha256(string(asset, "digest")));
         }
@@ -305,6 +311,23 @@ public final class UpdateChecker implements Runnable {
             if (url.endsWith("-clone.apk") == clone) return asset;
         }
         return null;
+    }
+
+    /**
+     * The asset URL if it is an HTTPS download from github.com, else null: then
+     * the prompt offers the release page instead of downloading. GitHub's asset
+     * URLs always have this form; it redirects from there to its storage over
+     * HTTPS, which HttpURLConnection follows (it never follows a switch to HTTP).
+     */
+    static String githubDownload(String url) {
+        if (url == null) return null;
+        try {
+            URI uri = new URI(url);
+            return "https".equalsIgnoreCase(uri.getScheme()) && "github.com".equalsIgnoreCase(uri.getHost())
+                    && uri.getUserInfo() == null && (uri.getPort() == -1 || uri.getPort() == 443) ? url : null;
+        } catch (Throwable t) {
+            return null;
+        }
     }
 
     /**
@@ -878,7 +901,7 @@ public final class UpdateChecker implements Runnable {
             File dest = null;
             HttpURLConnection connection = null;
             try {
-                File dir = app.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                File dir = app.getCacheDir();
                 if (dir == null) throw new IllegalStateException("no download dir");
                 dest = new File(dir, UPDATE_FILE_NAME);
                 if (dest.exists() && !dest.delete()) {
@@ -1054,7 +1077,8 @@ public final class UpdateChecker implements Runnable {
                 int statusCode = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, Integer.MIN_VALUE);
                 if (statusCode == PackageInstaller.STATUS_PENDING_USER_ACTION) {
                     if (promptShown) return; // never raise a second confirmation
-                    Intent confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT);
+                    Intent confirm = safeConfirmIntent(
+                            intent.getParcelableExtra(Intent.EXTRA_INTENT), c.getPackageName());
                     if (confirm == null) return;
                     confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     try {
@@ -1088,6 +1112,43 @@ public final class UpdateChecker implements Runnable {
         } else {
             app.registerReceiver(receiver, filter);
         }
+    }
+
+    /**
+     * The install callback's confirmation Intent, made safe to start, or null.
+     *
+     * Below Android 13 a receiver registered at runtime is exported, so the
+     * callback can come from any app, and starting its Intent as is runs with
+     * this app's identity: it could open one of Instagram's private activities,
+     * or hand out a grant to one of its files. The system always addresses the
+     * confirmation to another package (the package installer, by setPackage), so
+     * only such an Intent is started, with its URI grant flags, clip data and
+     * selector removed; the installer's confirmation needs none of them.
+     *
+     * The action is not checked: it differs across Android versions
+     * (CONFIRM_PERMISSIONS, then CONFIRM_INSTALL).
+     */
+    static Intent safeConfirmIntent(Intent confirm, String ownPackage) {
+        if (confirm == null) return null;
+        String component = confirm.getComponent() == null ? null : confirm.getComponent().getPackageName();
+        if (!isForeignTarget(confirm.getPackage(), component, ownPackage)) return null;
+        confirm.setSelector(null);
+        confirm.setClipData(null);
+        confirm.removeFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
+        return confirm;
+    }
+
+    /**
+     * Whether an Intent addressed to {@code targetPackage} (and, if set, to a
+     * component of {@code componentPackage}) can only reach another app. An
+     * unaddressed Intent could resolve to one of this app's own activities.
+     */
+    static boolean isForeignTarget(String targetPackage, String componentPackage, String ownPackage) {
+        if (targetPackage == null || targetPackage.isEmpty() || targetPackage.equals(ownPackage)) return false;
+        return componentPackage == null || componentPackage.equals(targetPackage);
     }
 
     /** Whether this app may install packages (API 26+ gates on a per-app toggle). */
