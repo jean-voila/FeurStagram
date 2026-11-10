@@ -36,8 +36,10 @@ private val debuggablePatch = resourcePatch {
  * which makes an on-device test a shell command instead of a screenshot-and-tap
  * loop. See `DebugBridge` for the command list.
  *
- * Never ship a release with this enabled: any app on the device could send those
- * broadcasts.
+ * Never ship a release with this enabled: the app becomes debuggable, and the
+ * whole settings store, lock included, is open to anything with adb access. The
+ * receiver only takes broadcasts from senders holding DUMP (the adb shell), so
+ * other apps on the device cannot drive it.
  */
 @Suppress("unused")
 val debugBridgePatch = bytecodePatch(
