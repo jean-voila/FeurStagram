@@ -994,9 +994,14 @@ public final class Settings {
             return;
         }
         showConfirm(context, "Enable permanent lock?",
-                "This is permanent for this installation. You will no longer be able to "
-                        + "re-enable Home feed, Explore, Reels or Stories, or turn off Following feed "
-                        + "only, without reinstalling the app.",
+                // Config.isLockable decides what is frozen: every block_* toggle, every
+                // nav_show_* icon and Following feed only. Keep this text in line with it.
+                "This is permanent for this installation. Everything hidden when you leave "
+                        + "these settings stays hidden until you reinstall the app: every block "
+                        + "that is on (Home feed, Explore, Reels, Stories, ads, suggestions, Notes, "
+                        + "the notifications button and the others), every hidden navigation icon, "
+                        + "and Following feed only. You can still hide more later. If the Messages "
+                        + "icon is hidden, Quoicouview mode stays unavailable.",
                 "Enable lock", ERROR, ON_ERROR,
                 () -> {
                     Config.enableHardcoreMode();

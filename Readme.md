@@ -250,8 +250,11 @@ If you open the page and change nothing, Back simply closes it.
 
 The permanent lock freezes your restrictions for this installation. It only
 prevents *relaxing* them: you can still make settings **stricter** (turn a
-block on), but you cannot turn a block back off without reinstalling. It also
-freezes **Following feed only** once it is on, so the ranked feed cannot come back.
+block on), but you cannot turn a block back off without reinstalling. This
+covers every block toggle (ads, suggestions, Notes, the notifications button…
+included) and the navigation-bar icons: a hidden icon stays hidden, and with the
+Messages icon hidden, Quoicouview mode stays unavailable. It also freezes
+**Following feed only** once it is on, so the ranked feed cannot come back.
 
 The freeze is captured per settings session, not the instant you flip a
 switch. When you open the settings page, Feurstagram snapshots which surfaces

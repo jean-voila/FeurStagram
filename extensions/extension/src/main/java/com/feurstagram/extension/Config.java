@@ -285,6 +285,7 @@ public final class Config {
         baseline.put("block_notes", isNotesBlocked());
         baseline.put("block_suggested", isSuggestedBlocked());
         baseline.put("block_ads", isAdsBlocked());
+        baseline.put("block_notifications", isNotificationsButtonBlocked());
         baseline.put("limit_following_feed", isFollowingFeedOnly());
         for (String key : NAV_KEYS) {
             baseline.put(key, getBlocked(key, navDefault(key)));
