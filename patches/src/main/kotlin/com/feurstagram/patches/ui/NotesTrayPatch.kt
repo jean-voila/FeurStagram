@@ -56,7 +56,7 @@ val notesTrayPatch = bytecodePatch(
 
         igAdapterApply().addInstructions(
             0,
-            "invoke-static { p1 }, $HIDERS->onListUpdate(Ljava/lang/Object;)V",
+            "invoke-static/range { p1 .. p1 }, $HIDERS->onListUpdate(Ljava/lang/Object;)V",
         )
     }
 }

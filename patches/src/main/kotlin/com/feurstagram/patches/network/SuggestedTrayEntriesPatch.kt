@@ -1,9 +1,9 @@
 package com.feurstagram.patches.network
 
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.instructions
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.util.addInstructionsAtControlFlowLabel
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.feurstagram.patches.shared.Constants.COMPATIBILITY_INSTAGRAM
@@ -53,8 +53,12 @@ val suggestedTrayEntriesPatch = bytecodePatch(
                 .filter { it.value.opcode == Opcode.RETURN_OBJECT }
                 .map { it.index to (it.value as OneRegisterInstruction).registerA }
                 .reversed()
+            // A return is often a branch target (several paths share it). A plain
+            // insert leaves the branch label on the return itself, so jumps to it
+            // would skip the filter and let suggested accounts through; inserting
+            // at the label runs the filter on every path.
             for ((index, register) in returns) {
-                addInstructions(
+                addInstructionsAtControlFlowLabel(
                     index,
                     "invoke-static/range { v$register .. v$register }, " +
                         "$BLOCK_CLASS->filterTrayEntry(Ljava/lang/Object;)Ljava/lang/Object;\n" +

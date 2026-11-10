@@ -161,14 +161,32 @@ val feedItemFilterPatch = bytecodePatch(
             // first case loads a type token via const-string/jumbo. The field
             // name is the last value materialised (move-result-object) before
             // that first jumbo string — found structurally, not by name.
-            val firstJumboIndex = instructions.first {
+            val firstJumboIndex = instructions.firstOrNull {
                 it.opcode == Opcode.CONST_STRING_JUMBO
-            }.location.index
+            }?.location?.index ?: throw PatchException("Feed item parser has no const-string/jumbo type token")
 
-            val keyLoad = instructions.last {
-                it.opcode == Opcode.MOVE_RESULT_OBJECT && it.location.index < firstJumboIndex
-            }
+            // When the String.hashCode() call of that dispatch is there, follow the
+            // register it hashes rather than the last value read: a value kept in
+            // between (a nextToken() result, as in 454's media codec) would
+            // otherwise reach replaceFeedItemType as its String and fail
+            // verification on the device instead of failing here.
+            val beforeTokens = instructions.subList(0, firstJumboIndex)
+            val hash = beforeTokens.lastOrNull { it.isStringHash() }
+            val keyLoad = if (hash != null) {
+                val hashed = (hash as FiveRegisterInstruction).registerC
+                beforeTokens.subList(0, hash.location.index).lastOrNull {
+                    it.opcode == Opcode.MOVE_RESULT_OBJECT && (it as OneRegisterInstruction).registerA == hashed
+                }
+            } else {
+                beforeTokens.lastOrNull { it.opcode == Opcode.MOVE_RESULT_OBJECT }
+            } ?: throw PatchException("Feed item parser reads no field name before its type tokens")
             val keyRegister = (keyLoad as OneRegisterInstruction).registerA
+            if (hash != null) {
+                val between = instructions.subList(keyLoad.location.index + 1, hash.location.index)
+                if (between.any { it.opcode.setsRegister() && (it as? OneRegisterInstruction)?.registerA == keyRegister }) {
+                    throw PatchException("Feed item field name is overwritten before its hash dispatch")
+                }
+            }
 
             // Rewriting a blocked unit's type token to an invalid one routes it to
             // the parser's own "unknown FeedItem type" branch, which yields an
