@@ -289,6 +289,8 @@ public final class Hiders {
         private final boolean invert;
         private final String scope;
         private final String[] names;
+        /** Whether the last pass that acted hid the targets (main thread only). */
+        private boolean applied;
 
         VisibilityHider(ViewGroup root, String key, String... names) {
             this(root, key, true, false, null, names);
@@ -313,6 +315,18 @@ public final class Hiders {
 
         @Override
         public void onGlobalLayout() {
+            // Nav icons go through Config, which knows the ones a mode forces.
+            boolean pref = key.startsWith("nav_show_") ? Config.isNavTabShown(key)
+                    : Config.getBlocked(key, defaultValue);
+            boolean hidden = invert ? !pref : pref; // invert: pref true = shown
+            // Nothing to hide, and nothing this hider hid: leave Instagram's views
+            // alone. Forcing VISIBLE on every pass overrode Instagram's own GONE
+            // (an empty Instants bubble, say), and walking the whole window for it
+            // cost a findViewById per name on every layout pass. A toggle only
+            // changes through the settings page, which restarts the app, so a
+            // hider either hides on every pass or never runs past this line; a
+            // change made at runtime (Debug bridge) still gets undone once.
+            if (!hidden && !applied) return;
             Context context = root.getContext();
             if (context == null) return;
             // Search the whole window, not just the tab bar: some targets (the
@@ -329,10 +343,6 @@ public final class Hiders {
                 if (scopeView == null) return; // container not on this screen; leave everything alone
                 searchRoot = scopeView;
             }
-            // Nav icons go through Config, which knows the ones a mode forces.
-            boolean pref = key.startsWith("nav_show_") ? Config.isNavTabShown(key)
-                    : Config.getBlocked(key, defaultValue);
-            boolean hidden = invert ? !pref : pref; // invert: pref true = shown
             int visibility = hidden ? View.GONE : View.VISIBLE;
             for (String name : names) {
                 int id = resolveId(context, name);
@@ -340,6 +350,7 @@ public final class Hiders {
                 View view = searchRoot.findViewById(id);
                 if (view != null) view.setVisibility(visibility);
             }
+            applied = hidden;
         }
     }
 
@@ -362,6 +373,8 @@ public final class Hiders {
      */
     static final class FriendsLaneHider implements ViewTreeObserver.OnGlobalLayoutListener {
         private final ViewGroup root;
+        /** As {@link VisibilityHider#applied}. */
+        private boolean applied;
 
         FriendsLaneHider(ViewGroup root) {
             this.root = root;
@@ -369,6 +382,10 @@ public final class Hiders {
 
         @Override
         public void onGlobalLayout() {
+            boolean hidden = Config.isFriendsLaneBlocked();
+            // As in VisibilityHider: no walk of the window when there is nothing
+            // to hide and nothing to undo.
+            if (!hidden && !applied) return;
             Context context = root.getContext();
             if (context == null) return;
             View searchRoot = root.getRootView();
@@ -391,10 +408,11 @@ public final class Hiders {
                 strip = (ViewGroup) strip.getChildAt(0);
             }
 
-            int visibility = Config.isFriendsLaneBlocked() ? View.GONE : View.VISIBLE;
+            int visibility = hidden ? View.GONE : View.VISIBLE;
             for (int i = 1; i < strip.getChildCount(); i++) {
                 strip.getChildAt(i).setVisibility(visibility);
             }
+            applied = hidden;
         }
     }
 
