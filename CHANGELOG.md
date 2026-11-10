@@ -4,7 +4,48 @@ All notable changes to Feurstagram should be documented in this file.
 
 ## Unreleased
 
-Nothing yet.
+### Fixed
+- **Suggested accounts slipping into the stories tray** (likely #168). The tray
+  filter was inserted in front of each `return-object` of the tray parser, but the
+  branch label stayed on the return, so every path that jumps to it skipped the
+  filter. It now goes in at the label (`addInstructionsAtControlFlowLabel`), as do
+  the *Following feed only* header rewrite and Quoicouview's story-launch check.
+- **Clear cache no longer drops unsent actions.** `pending_reel_quiz_responses`,
+  `pending_reel_slider_votes` and `pending_reel_countdown_follow_requests` queue
+  quiz answers, poll votes and countdown follows not sent yet; they are left alone.
+- **Permanent lock: the Notifications button toggle can be undone in-session**
+  like every other one. `block_notifications` was missing from the session
+  snapshot, so switching it on by mistake under the lock was final at once.
+- **Permanent lock warning** now says what the lock really freezes: every block,
+  every hidden navigation icon and Following feed only (it listed four surfaces).
+- **Follow prompt shows once per installation** instead of after every update
+  (#167).
+- **Clone:** only the app's own `<provider>` authorities are renamed (not the
+  `<queries>` entries naming other apps), and all of a `a;b` list, not the first.
+
+### Changed
+- **Update check:** the release JSON is read with `org.json` instead of a
+  hand-written parser, and the downloaded APK is checked against the SHA-256
+  digest GitHub publishes for each asset before it is handed to Android.
+- **Fewer lookups on hot paths:** `Config` keeps the Application and its
+  preferences once resolved (read on every network request), and `Hiders` keeps
+  resolved view ids (read on every layout pass).
+- **Patch robustness:** single-register hooks use `invoke-static/range`, the feed
+  item filter follows the register its hash dispatch reads, and two hooks fail at
+  patch time when `move-result` reuses the register they also pass, instead of
+  failing verification on the device.
+- Onboarding's Skip button meets the 48dp minimum touch target.
+- Patch bundle metadata points to the real repository, site and contact.
+
+### Build
+- GitHub Actions builds the patch bundle and runs the new unit tests (update
+  check, permanent-lock rules, network and feed blocking) on every push and pull
+  request.
+- `build.sh` passes the keystore passwords to `apksigner` through the
+  environment instead of the command line (visible in `ps`), rejects unknown
+  options instead of silently dropping them, and finds a JDK 21 under
+  `/usr/lib/jvm` on Linux.
+- The Dockerfile checks the SHA-256 of the Android command-line tools.
 
 ## v454-0-0-54-77
 
