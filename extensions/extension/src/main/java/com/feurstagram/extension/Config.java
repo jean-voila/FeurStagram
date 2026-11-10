@@ -355,8 +355,8 @@ public final class Config {
 
     /**
      * The package {@code lastUpdateTime} the "follow the official account" card was
-     * last shown for, or 0 if never. A different value on launch means the app was
-     * installed or updated since, so the card is due again.
+     * shown for, or 0 if never. Any other value means this installation has had
+     * the card, which it only gets once.
      */
     public static long getFollowPromptShownFor() {
         SharedPreferences prefs = prefs();

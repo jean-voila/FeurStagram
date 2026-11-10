@@ -19,13 +19,13 @@ import android.widget.TextView;
 
 /**
  * A card inviting the user to follow the official Feurstagram Instagram account,
- * shown once on the first launch after every install or update — before the
- * "What's new" card, which only runs once this one is out of the way.
+ * shown once per installation, on the first launch, before the "What's new"
+ * card, which only runs once this one is out of the way.
  *
- * "After an install or update" is read from the package's {@code lastUpdateTime}
- * rather than its versionName: a Feurstagram re-release on the same Instagram base
- * (a {@code -1} tag) keeps the versionName but is still an update, and a fresh
- * install has no stored time at all.
+ * Updates do not show it again (issue #167): with a release most weeks, a card on
+ * every update read as nagging. Once shown, the package's {@code lastUpdateTime}
+ * is stored as the marker; the preferences go with an uninstall, so a reinstall
+ * shows the card once more.
  *
  * The follow button opens the profile inside this very app (the signature-check
  * bypass makes Instagram accept its own deep links), falling back to any handler
@@ -46,7 +46,7 @@ public final class FollowPrompt {
     private FollowPrompt() {}
 
     /**
-     * Show the card if this install/update has not had it yet, then run
+     * Show the card if this installation has not had it yet, then run
      * {@code then} once it is dismissed. When there is nothing to show (or it
      * cannot be shown), {@code then} runs straight away. Runs at most once per
      * process.
@@ -55,7 +55,7 @@ public final class FollowPrompt {
         if (context == null || checked) return;
         checked = true;
         final long updateTime = lastUpdateTime(context);
-        if (updateTime == 0L || updateTime == Config.getFollowPromptShownFor()) {
+        if (updateTime == 0L || Config.getFollowPromptShownFor() != 0L) {
             then.run();
             return;
         }
