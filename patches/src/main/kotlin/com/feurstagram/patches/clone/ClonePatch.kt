@@ -84,18 +84,29 @@ val clonePatch = resourcePatch(
                     ?.setAttribute("android:name", newName)
             }
 
+            // Only the app's own providers. <queries> also names other apps'
+            // providers by authority, and getElementsByTagName returns those too:
+            // renaming them would break the query without avoiding any conflict.
             val providers = manifest.getElementsByTagName("provider").asSequence().map { it as Element }
+                .filter { (it.parentNode as? Element)?.tagName == "application" }
             for (provider in providers) {
-                val oldAuthority = provider.getAttribute("android:authorities")
-                val newAuthority =
-                    if (oldAuthority.startsWith("$ORIGINAL_PACKAGE_NAME.")) {
-                        oldAuthority.replaceFirst(ORIGINAL_PACKAGE_NAME, newPackageName)
-                    } else {
-                        "${newPackageName}_$oldAuthority"
-                    }
+                // One provider may declare several authorities separated by ';', and
+                // each must be unique on the device, so every one is renamed.
+                val oldAuthorities = provider.getAttribute("android:authorities")
+                    .split(';').map { it.trim() }.filter { it.isNotEmpty() }
+                if (oldAuthorities.isEmpty()) continue
+                val newAuthorities = oldAuthorities.map { oldAuthority ->
+                    val newAuthority =
+                        if (oldAuthority.startsWith("$ORIGINAL_PACKAGE_NAME.")) {
+                            oldAuthority.replaceFirst(ORIGINAL_PACKAGE_NAME, newPackageName)
+                        } else {
+                            "${newPackageName}_$oldAuthority"
+                        }
+                    providerReplacements.add(oldAuthority to newAuthority)
+                    newAuthority
+                }
 
-                provider.setAttribute("android:authorities", newAuthority)
-                providerReplacements.add(oldAuthority to newAuthority)
+                provider.setAttribute("android:authorities", newAuthorities.joinToString(";"))
             }
         }
 
