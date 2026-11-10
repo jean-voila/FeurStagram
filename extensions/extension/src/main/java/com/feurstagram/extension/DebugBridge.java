@@ -67,6 +67,9 @@ public final class DebugBridge {
 
     private static boolean sInstalled;
 
+    /** Held by the adb shell, which sends `am broadcast`, and by no ordinary app. */
+    private static final String SENDER_PERMISSION = "android.permission.DUMP";
+
     /**
      * Whether {@link Block} logs every request path it sees. Off even in a debug
      * build until TRACE turns it on, because the feed alone is hundreds of lines a
@@ -112,13 +115,16 @@ public final class DebugBridge {
         try {
             IntentFilter filter = new IntentFilter();
             for (String action : ACTIONS) filter.addAction(PREFIX + action);
+            // Only senders holding DUMP get through: the adb shell does, an app
+            // cannot (it is a signature|privileged|development permission). So a
+            // debug build installed by mistake is not drivable by other apps.
             if (Build.VERSION.SDK_INT >= 26) {
                 // Context.RECEIVER_EXPORTED (0x2), spelled as a literal so the
                 // extension still compiles against an older compileSdk. Required
                 // from Android 14 on for a receiver `adb shell am` can reach.
-                context.registerReceiver(new Receiver(), filter, 2);
+                context.registerReceiver(new Receiver(), filter, SENDER_PERMISSION, null, 2);
             } else {
-                context.registerReceiver(new Receiver(), filter);
+                context.registerReceiver(new Receiver(), filter, SENDER_PERMISSION, null);
             }
             sInstalled = true;
             Log.i(TAG, "debug bridge ready (" + PREFIX + "…)");
