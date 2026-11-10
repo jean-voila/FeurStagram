@@ -16,6 +16,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
@@ -424,6 +425,10 @@ public final class Onboarding {
             int skipPadX = Settings.dp(context, 20);
             int skipPadY = Settings.dp(context, 12);
             skip.setPadding(skipPadX, skipPadY, skipPadX, skipPadY);
+            // 15sp text plus the padding is about 42dp tall: keep the way out of
+            // the overlay at the 48dp minimum touch target, text centred in it.
+            skip.setMinHeight(Settings.dp(context, 48));
+            skip.setGravity(Gravity.CENTER);
             skip.setOnClickListener(v -> {
                 if (onSkip != null) onSkip.run();
             });
