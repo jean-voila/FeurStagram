@@ -37,6 +37,17 @@ OUT="$DIR/feurstagram.apk"
 # not pick up a newer system JDK.
 if [ -d "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home" ]; then
     export JAVA_HOME="/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home"
+elif [ -z "${JAVA_HOME:-}" ]; then
+    # Linux distributions install JDKs side by side under /usr/lib/jvm (Fedora:
+    # java-21-openjdk, Debian/Ubuntu: java-21-openjdk-amd64, Adoptium:
+    # temurin-21-jdk-*). Take a full JDK 21 there, javac included, rather than
+    # whatever newer default `java` points to.
+    for jdk in /usr/lib/jvm/java-21-openjdk* /usr/lib/jvm/temurin-21-jdk*; do
+        if [ -x "$jdk/bin/javac" ]; then
+            export JAVA_HOME="$jdk"
+            break
+        fi
+    done
 fi
 
 # The patcher dependency lives on GitHub Packages. Credentials come from
@@ -76,17 +87,31 @@ APK=""
 CLONE=0
 INSTALL=0
 DEBUG=0
+USAGE="usage: ./build.sh <instagram.apk|.apkm|.xapk|.apks> [--clone] [--install] [--debug]"
 for arg in "$@"; do
     case "$arg" in
         --clone) CLONE=1 ;;
         --install) INSTALL=1 ;;
         --debug) DEBUG=1 ;;
-        *) APK="$arg" ;;
+        # A mistyped flag (--instal) used to be taken for the APK path and then
+        # silently replaced by the real one, so the option was just dropped.
+        -*)
+            echo "Error: unknown option: $arg" >&2
+            echo "$USAGE" >&2
+            exit 1
+            ;;
+        *)
+            if [ -n "$APK" ]; then
+                echo "Error: more than one APK given: $APK, $arg" >&2
+                exit 1
+            fi
+            APK="$arg"
+            ;;
     esac
 done
 
 if [ -z "$APK" ] || [ ! -f "$APK" ]; then
-    echo "usage: ./build.sh <instagram.apk|.apkm|.xapk|.apks> [--clone] [--install] [--debug]" >&2
+    echo "$USAGE" >&2
     exit 1
 fi
 if [ -z "$CLI" ]; then
@@ -167,11 +192,19 @@ if [ "$SIGN_WITH_APKSIGNER" -eq 1 ]; then
     # Force v1+v2+v3 so the signature is accepted across the whole user base's
     # devices and matches the schemes prior releases shipped; v4 (the .idsig
     # sidecar) is only useful for adb incremental install, so leave it off.
+    # The passwords are read from the environment (env:NAME): a "pass:<secret>"
+    # argument would show in the process list (ps) for as long as signing runs.
+    export FEURSTAGRAM_KEYSTORE_PASS
+    KEY_PASS_VAR=FEURSTAGRAM_KEYSTORE_PASS
+    if [ -n "${FEURSTAGRAM_KEY_PASS:-}" ]; then
+        export FEURSTAGRAM_KEY_PASS
+        KEY_PASS_VAR=FEURSTAGRAM_KEY_PASS
+    fi
     "$APKSIGNER" sign \
         --ks "$KEYSTORE" \
         --ks-key-alias "$KEY_ALIAS" \
-        --ks-pass "pass:$FEURSTAGRAM_KEYSTORE_PASS" \
-        --key-pass "pass:${FEURSTAGRAM_KEY_PASS:-$FEURSTAGRAM_KEYSTORE_PASS}" \
+        --ks-pass env:FEURSTAGRAM_KEYSTORE_PASS \
+        --key-pass "env:$KEY_PASS_VAR" \
         --v1-signing-enabled true \
         --v2-signing-enabled true \
         --v3-signing-enabled true \

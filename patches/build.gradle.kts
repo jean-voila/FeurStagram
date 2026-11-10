@@ -4,10 +4,10 @@ patches {
     about {
         name = "Feurstagram Patches"
         description = "Distraction-free Instagram: blocks the feed, stories, explore, reels, ads and suggestions, with a runtime toggle and an optional permanent lock."
-        source = "git@github.com:jeanherail/Feurstagram.git"
+        source = "https://github.com/jean-voila/FeurStagram"
         author = "Jean Herail"
-        contact = "na"
-        website = "na"
+        contact = "feurstagram@gmail.com"
+        website = "https://jean-voila.github.io/FeurStagram/"
         license = "GPLv3"
     }
 }

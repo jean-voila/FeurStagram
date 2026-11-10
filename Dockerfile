@@ -23,10 +23,16 @@ ENV ANDROID_HOME=/opt/android-sdk \
     DEBIAN_FRONTEND=noninteractive \
     PATH="/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:${PATH}"
 
+# Checksum of commandlinetools-linux-11076708_latest.zip as published on
+# https://developer.android.com/studio#command-line-tools-only. Update both
+# together when bumping the tools.
+ARG CMDTOOLS_SHA256=2d2d50857e4eb553af5a6dc3ad507a17adf43d115264b1afc116f95c92e5e258
+
 RUN apt-get update && apt-get install -y --no-install-recommends curl unzip git \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /opt/android-sdk/cmdline-tools \
     && curl -sSL -o /tmp/cmdtools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip \
+    && echo "${CMDTOOLS_SHA256}  /tmp/cmdtools.zip" | sha256sum -c - \
     && unzip -q /tmp/cmdtools.zip -d /opt/android-sdk/cmdline-tools \
     && mv /opt/android-sdk/cmdline-tools/cmdline-tools /opt/android-sdk/cmdline-tools/latest \
     && rm /tmp/cmdtools.zip \
