@@ -1,0 +1,46 @@
+name: Build
+
+# Compiles the patch bundle and the extension and runs the unit tests on every
+# push (contributors' forks included) and pull request, so a change that no
+# longer builds is caught before a release is cut. It does not patch an
+# Instagram APK: that still happens with build.sh on a machine that has one.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # The Morphe Gradle plugin and patcher come from GitHub Packages, which needs
+  # a token even for public packages; the workflow token is enough.
+  packages: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      # ubuntu-latest ships the Android SDK with ANDROID_HOME set.
+      - name: Build patches and run unit tests
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew :patches:build test --no-daemon
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: '**/build/reports/tests/'
+          if-no-files-found: ignore

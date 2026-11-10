@@ -49,4 +49,7 @@ keep the same one to reinstall without losing app data.
 - Only use APKs from trusted sources.
 - Patches are fingerprint-based, so a new Instagram version usually only needs a
   rebuild.
+- `./gradlew :patches:build test` builds the bundle and runs the extension's
+  unit tests without an Instagram APK. The same command runs on every pull
+  request in GitHub Actions.
 - If the build fails, check open issues or create a bug report.
