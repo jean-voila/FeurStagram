@@ -358,7 +358,10 @@ hook installs the navigation-tab/Notes/Instants hiders, the hidden-tab swipe
 skipper and the cold-start landing-page redirect.
 
 ### Quoicouview mode
-The Direct inbox is an `IgRecyclerViewAdapter`: a list of models, each drawn by
+When Quoicouview is enabled or Notes are blocked, the Direct inbox uses Instagram's
+view-based list renderer, including on accounts assigned the fully Compose inbox.
+The renderer choice is applied both to view setup and data delivery.
+The list uses an `IgRecyclerViewAdapter`: a list of models, each drawn by
 the row type registered for its class. The patch registers one more row type,
 `StoriesTrayRow`, in every such adapter (it is made a subclass of Instagram's
 obfuscated row and holder base classes at patch time), and hooks the adapter's
@@ -369,7 +372,9 @@ keeps the tray up to date while it is drawn in the inbox. A tap opens the story
 exactly as on Home, growing out of the avatar and shrinking back into it on
 close: the feed tray controller's "is the feed visible" checks accept the tray
 in the inbox, and the controller, a lifecycle listener of the feed fragment,
-follows the inbox's resume and pause instead. The viewer is added over the
+follows the inbox's resume and pause instead, together with its data controller.
+Returning to Messages runs Instagram's client-side story sort, and pulling to
+refresh also requests new stories. The viewer is added over the
 inbox rather than replacing it, so closing it does not wait for the inbox to be
 rebuilt. The feed header's notifications
 button is moved to the inbox header the same way. The story camera is the swipe

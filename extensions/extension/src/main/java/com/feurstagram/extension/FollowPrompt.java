@@ -19,7 +19,7 @@ import android.widget.TextView;
 
 /**
  * A card inviting the user to follow the official Feurstagram Instagram account,
- * shown once on the first launch after every install or update — before the
+ * shown once on the first launch after every install or update until Follow is clicked — before the
  * "What's new" card, which only runs once this one is out of the way.
  *
  * "After an install or update" is read from the package's {@code lastUpdateTime}
@@ -55,7 +55,8 @@ public final class FollowPrompt {
         if (context == null || checked) return;
         checked = true;
         final long updateTime = lastUpdateTime(context);
-        if (updateTime == 0L || updateTime == Config.getFollowPromptShownFor()) {
+        if (Config.hasFollowedOfficialAccount()
+                || updateTime == 0L || updateTime == Config.getFollowPromptShownFor()) {
             then.run();
             return;
         }
@@ -122,6 +123,7 @@ public final class FollowPrompt {
 
             Button follow = Settings.makeButton(context, "Follow", Settings.PRIMARY, Settings.ON_PRIMARY, true);
             follow.setOnClickListener(v -> {
+                Config.rememberOfficialAccountFollow();
                 dialog.dismiss();
                 openProfile(context);
             });

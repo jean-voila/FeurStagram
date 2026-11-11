@@ -17,6 +17,11 @@ public final class Hiders {
 
     private Hiders() {}
 
+    /** The fully Compose inbox bypasses list-adapter hooks and cannot host the native stories view. */
+    public static boolean useComposeInbox(boolean nativeChoice) {
+        return nativeChoice && !Config.isQuoicouviewEnabled() && !Config.isNotesBlocked();
+    }
+
     /** Install every UI hider and the landing redirect on the tab-bar root. */
     public static void installAll(ViewGroup root) {
         if (root == null) return;

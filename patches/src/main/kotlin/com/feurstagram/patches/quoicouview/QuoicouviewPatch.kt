@@ -72,6 +72,19 @@ internal object StoryViewerPushFingerprint : Fingerprint(
     strings = listOf("ReelViewerFragment.BACK_STACK_NAME"),
 )
 
+// The view inbox registers its pull-to-refresh Runnable during list setup.
+private object InboxRefreshSetupFingerprint : Fingerprint(
+    name = "onCreateView",
+    returnType = "Landroid/view/View;",
+    strings = listOf("list_setup_start"),
+)
+
+// The tray data controller subscribes to store changes and triggers client-side sorting.
+private object StoryTrayDataFingerprint : Fingerprint(
+    returnType = "V",
+    strings = listOf("ReelTrayClientSideResort"),
+)
+
 private const val STORY_VIEWER = "Linstagram/features/stories/fragment/ReelViewerFragment;"
 
 // The Direct inbox fragment, by its result handling ("DirectInboxController",
@@ -377,6 +390,75 @@ val quoicouviewPatch = bytecodePatch(
                     }
                 }
         }
+        val dataType = StoryTrayDataFingerprint.classDef.type
+        val trayClass = mutableClassDefBy(controllerType)
+        val dataField = trayClass.fields.singleOrNull { it.type == dataType }
+            ?: throw PatchException("Tray controller no longer holds its data controller")
+        val resort = trayClass.methods.single { it.name == "onResume" && it.params.isEmpty() }
+            .instructions.mapNotNull {
+                methodRef((it as? ReferenceInstruction)?.reference)?.takeIf { ref ->
+                    it.opcode == Opcode.INVOKE_INTERFACE && ref.returnType == "Z" &&
+                        ref.parameterTypes.map { p -> p.toString() } == listOf("Z", "Z", "Z")
+                }
+            }.distinct().singleOrNull() ?: throw PatchException("Tray resume has no native sorting request")
+        val storeField = trayClass.fields.singleOrNull { it.type == resort.definingClass }
+            ?: throw PatchException("Tray controller no longer holds its story store")
+        for (name in listOf("onResume", "onPause")) {
+            if (classDefBy(dataType).methods.none { it.name == name && it.params.isEmpty() }) {
+                throw PatchException("Tray data controller has no $name")
+            }
+        }
+        trayClass.addBridge(
+            "feurstagramResumeTray", emptyList(), "V", registers = 4,
+            """
+                iget-object v0, p0, $controllerType->${dataField.name}:$dataType
+                invoke-virtual { v0 }, $dataType->onResume()V
+                invoke-virtual { p0 }, $controllerType->onResume()V
+                iget-object v0, p0, $controllerType->${storeField.name}:${storeField.type}
+                const/4 v1, 0x0
+                const/4 v2, 0x1
+                invoke-interface { v0, v1, v2, v2 }, ${resort.definingClass}->${resort.name}(ZZZ)Z
+                return-void
+            """,
+        )
+        trayClass.addBridge(
+            "feurstagramPauseTray", emptyList(), "V", registers = 2,
+            """
+                invoke-virtual { p0 }, $controllerType->onPause()V
+                iget-object v0, p0, $controllerType->${dataField.name}:$dataType
+                invoke-virtual { v0 }, $dataType->onPause()V
+                return-void
+            """,
+        )
+        val requestStories = trayClass.methods.singleOrNull { method ->
+            AccessFlags.STATIC.isSet(method.accessFlags) && method.returnType == "V" &&
+                method.params == listOf(controllerType) && method.instructions.any {
+                    methodRef((it as? ReferenceInstruction)?.reference)?.let { ref ->
+                        ref.definingClass == "Landroid/os/Handler;" && ref.name == "postDelayed"
+                    } == true
+                }
+        } ?: throw PatchException("Tray has no unique story-request retry method")
+        trayClass.addBridge(
+            "feurstagramRefreshTray", emptyList(), "V", registers = 1,
+            """
+                invoke-static { p0 }, $controllerType->${requestStories.name}($controllerType)V
+                return-void
+            """,
+        )
+        InboxRefreshSetupFingerprint.method.apply {
+            val refresh = instructions.singleOrNull {
+                it.opcode == Opcode.INVOKE_INTERFACE && methodRef((it as ReferenceInstruction).reference)?.let { ref ->
+                    ref.returnType == "V" && ref.parameterTypes.map { p -> p.toString() } == listOf("Ljava/lang/Runnable;")
+                } == true
+            } ?: throw PatchException("Inbox setup has no unique refresh action setter")
+            val action = (refresh as FiveRegisterInstruction).registerD
+            addInstructions(refresh.location.index,
+                """
+                    invoke-static { v$action }, $QUOICOUVIEW->inboxRefreshAction(Ljava/lang/Runnable;)Ljava/lang/Runnable;
+                    move-result-object v$action
+                """,
+            )
+        }
         mutableClassDefBy(DirectInboxResultFingerprint.classDef.type).apply {
             listOf("onResume" to "trayControllerToResume", "onPause" to "trayControllerToPause").forEach { (name, hook) ->
                 val method = methods.singleOrNull { it.name == name && it.parameterTypes.isEmpty() && it.returnType == "V" }
@@ -391,7 +473,7 @@ val quoicouviewPatch = bytecodePatch(
                             move-result-object v0
                             if-eqz v0, :done
                             check-cast v0, $controllerType
-                            invoke-virtual { v0 }, $controllerType->$name()V
+                            invoke-virtual { v0 }, $controllerType->${if (name == "onResume") "feurstagramResumeTray" else "feurstagramPauseTray"}()V
                         """,
                         ExternalLabel("done", ret),
                     )
@@ -411,12 +493,13 @@ val quoicouviewPatch = bytecodePatch(
 
         // The tray's launches, by their parameters. Built in the launch itself up
         // to Instagram 453; 454 moved them into a private helper of the controller
-        // it calls, so the controller's own direct calls are searched too.
+        // it calls, so the controller's own helper calls are searched too.
         val trayLaunch = StoryTrayLaunchFingerprint.method
         val controller = mutableClassDefBy(controllerType)
         val launchSteps = listOf(trayLaunch) + trayLaunch.instructions.mapNotNull { instruction ->
             methodRef((instruction as? ReferenceInstruction)?.reference)?.takeIf {
-                (instruction.opcode == Opcode.INVOKE_DIRECT || instruction.opcode == Opcode.INVOKE_DIRECT_RANGE) &&
+                (instruction.opcode == Opcode.INVOKE_DIRECT || instruction.opcode == Opcode.INVOKE_DIRECT_RANGE ||
+                    instruction.opcode == Opcode.INVOKE_STATIC || instruction.opcode == Opcode.INVOKE_STATIC_RANGE) &&
                     it.definingClass == controllerType && it.name != "<init>"
             }
         }.distinct().mapNotNull { ref ->
@@ -426,7 +509,8 @@ val quoicouviewPatch = bytecodePatch(
             step.instructions.singleOrNull {
                 it.opcode == Opcode.INVOKE_DIRECT_RANGE && methodRef((it as ReferenceInstruction).reference)?.let { ref ->
                     ref.name == "<init>" && ref.parameterTypes.map { p -> p.toString() }.let { params ->
-                        params.size == 9 && params[1] == "Ljava/lang/Class;" && params.drop(4).all { p -> p == "Z" }
+                        params.size == 9 && params[1] == "Ljava/lang/Class;" &&
+                            params.last() == "Z" && params.takeLastWhile { p -> p == "Z" }.size >= 4
                     }
                 } == true
             }?.let { step to it }
@@ -502,7 +586,7 @@ val quoicouviewPatch = bytecodePatch(
                     move-result-object v0
                     if-eqz v0, :covered
                     check-cast v0, $controllerType
-                    invoke-virtual { v0 }, $controllerType->onPause()V
+                    invoke-virtual { v0 }, $controllerType->feurstagramPauseTray()V
                     :covered
                     return-void
                     :replace
@@ -540,7 +624,7 @@ val quoicouviewPatch = bytecodePatch(
                         move-result-object v0
                         if-eqz v0, :done
                         check-cast v0, $controllerType
-                        invoke-virtual { v0 }, $controllerType->onResume()V
+                        invoke-virtual { v0 }, $controllerType->feurstagramResumeTray()V
                     """,
                     ExternalLabel("done", ret),
                 )
@@ -575,12 +659,9 @@ val quoicouviewPatch = bytecodePatch(
         val homeTab = tabConstant("FEED")
         val messagesTab = tabConstant("DIRECT")
         // isCurrentTab(tab): the controller's one (tab)Z method the tab change calls.
-        val isCurrentTab = tabChanged.instructions.mapNotNull { instruction ->
-            methodRef((instruction as? ReferenceInstruction)?.reference)?.takeIf {
-                instruction.opcode == Opcode.INVOKE_VIRTUAL && it.definingClass == tabControllerType &&
-                    it.returnType == "Z" && it.parameterTypes.map { p -> p.toString() } == listOf(tabType)
-            }
-        }.distinctBy { it.name }.singleOrNull() ?: throw PatchException("Tab change no longer checks the current tab")
+        val isCurrentTab = classDefBy(tabControllerType).methods.singleOrNull {
+            it.returnType == "Z" && it.params == listOf(tabType) && !AccessFlags.STATIC.isSet(it.accessFlags)
+        } ?: throw PatchException("Tab controller has no unique current-tab check")
 
         val tabController = mutableClassDefBy(tabControllerType)
         tabController.addBridge(
@@ -615,30 +696,47 @@ val quoicouviewPatch = bytecodePatch(
             it.name == swipeAllowedName && it.parameterTypes.isEmpty() && it.returnType == "Z"
         }
 
-        listOf(tabChanged, swipeAllowed).forEach { method ->
-            if (AccessFlags.STATIC.isSet(method.accessFlags)) throw PatchException("${method.name} is no longer an instance method")
-            val homeChecks = method.instructions.filter { instruction ->
-                val index = instruction.location.index
-                instruction.opcode == Opcode.INVOKE_VIRTUAL && index > 0 &&
-                    methodRef((instruction as ReferenceInstruction).reference)?.let {
-                        it.definingClass == tabControllerType && it.name == isCurrentTab.name
-                    } == true &&
-                    method.instructions[index - 1].let { load ->
-                        load.opcode == Opcode.SGET_OBJECT &&
-                            ((load as ReferenceInstruction).reference as FieldReference).let {
-                                it.definingClass == homeTab.definingClass && it.name == homeTab.name
-                            } &&
-                            (load as OneRegisterInstruction).registerA == (instruction as FiveRegisterInstruction).registerD
-                    }
-            }.map { method.instructions[it.location.index + 1] }.filter { it.opcode == Opcode.MOVE_RESULT }
-            if (homeChecks.isEmpty()) throw PatchException("${method.name} no longer checks for Home")
-            homeChecks.reversed().forEach { result ->
+        fun homeChecks(method: MutableMethod) = method.instructions.filter { instruction ->
+            val index = instruction.location.index
+            instruction.opcode == Opcode.INVOKE_VIRTUAL && index > 0 &&
+                methodRef((instruction as ReferenceInstruction).reference)?.let {
+                    it.definingClass == tabControllerType && it.name == isCurrentTab.name
+                } == true && method.instructions[index - 1].let { load ->
+                    load.opcode == Opcode.SGET_OBJECT &&
+                        (load as ReferenceInstruction).reference.toString() == homeTab.toString() &&
+                        (load as OneRegisterInstruction).registerA == (instruction as FiveRegisterInstruction).registerD
+                }
+        }
+        // Instagram 455 moved panel enabling from onTabChanged into the swipe
+        // controller. Locate that controller by its SwipeNavigationContainer field.
+        val panelUpdates = if (homeChecks(tabChanged).isNotEmpty()) listOf(tabChanged) else {
+            tabController.fields.mapNotNull { field ->
+                runCatching { classDefBy(field.type) }.getOrNull()?.takeIf { cls ->
+                    cls.fields.any { it.type == SWIPE_CONTAINER }
+                }
+            }.distinctBy { it.type }.flatMap { cls ->
+                mutableClassDefBy(cls.type).methods.filter { method ->
+                    method.returnType == "V" && method.parameterTypes.isEmpty() &&
+                        homeChecks(method).isNotEmpty()
+                }
+            }.also {
+                if (it.size != 1) throw PatchException("Expected one camera panel updater, found ${it.size}")
+            }
+        }
+        (panelUpdates + swipeAllowed).forEach { method ->
+            val checks = homeChecks(method)
+            if (checks.isEmpty()) throw PatchException("${method.name} no longer checks for Home")
+            checks.reversed().forEach { call ->
+                val receiver = (call as FiveRegisterInstruction).registerC
+                val result = method.instructions[call.location.index + 1]
+                if (result.opcode != Opcode.MOVE_RESULT) throw PatchException("Current-tab check has no result")
                 val register = (result as OneRegisterInstruction).registerA
+                if (register == receiver) throw PatchException("Current-tab result overwrites its controller")
                 method.addInstructionsWithLabels(
                     result.location.index + 1,
                     """
                         if-nez v$register, :home
-                        invoke-static/range { p0 .. p0 }, $tabControllerType->feurstagramMessagesIsMainPage($tabControllerType)Z
+                        invoke-static { v$receiver }, $tabControllerType->feurstagramMessagesIsMainPage($tabControllerType)Z
                         move-result v$register
                     """,
                     ExternalLabel("home", method.instructions[result.location.index + 1]),
@@ -730,9 +828,29 @@ internal fun app.morphe.patcher.patch.BytecodePatchContext.igAdapterApply(): Mut
     }.singleOrNull {
         it.definingClass == adapterType && it.parameterTypes.size == 1 && it.returnType == "V"
     } ?: throw PatchException("Adapter submit(List) does not apply an update")
-    return mutableClassDefBy(adapterType).methods.single {
+    var target = mutableClassDefBy(adapterType).methods.single {
         it.name == apply.name && it.params == apply.parameterTypes.map { p -> p.toString() }
     }
+    // Some inbox variants call apply(update, callback) directly. submit(List)
+    // reaches it through apply(update), which is only a convenience wrapper;
+    // hooking that wrapper misses both Notes filtering and stories insertion.
+    val updateType = apply.parameterTypes.single().toString()
+    val visited = mutableSetOf<String>()
+    while (visited.add(target.name + target.params)) {
+        val delegates = target.instructions.mapNotNull {
+            methodRef((it as? ReferenceInstruction)?.reference)
+        }.filter {
+            it.definingClass == adapterType && it.returnType == "V" &&
+                it.parameterTypes.firstOrNull()?.toString() == updateType && it.name != target.name
+        }.distinctBy { it.name + it.parameterTypes }
+        if (delegates.isEmpty()) return target
+        val delegate = delegates.singleOrNull()
+            ?: throw PatchException("Ambiguous adapter update delegation")
+        target = mutableClassDefBy(adapterType).methods.single {
+            it.name == delegate.name && it.params == delegate.parameterTypes.map { p -> p.toString() }
+        }
+    }
+    throw PatchException("Cyclic adapter update delegation")
 }
 
 /** The list-model interface of the adapter's row types. */

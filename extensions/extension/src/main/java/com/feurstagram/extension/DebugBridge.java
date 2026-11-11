@@ -315,7 +315,7 @@ public final class DebugBridge {
         ViewGroup tabBar = sTabBar.get();
         if (tabBar == null) return "ERROR no tab bar (open the app first)";
         Context context = tabBar.getContext();
-        View root = tabBar.getRootView();
+        View root = debugRoot(tabBar);
         int depth = intent.getIntExtra("depth", 2);
         int up = intent.getIntExtra("up", 6);
         String name = intent.getStringExtra("id");
@@ -501,9 +501,24 @@ public final class DebugBridge {
         }
     }
 
+    private static View debugRoot(View fallback) {
+        // Creation and music screens have their own activity, outside the tab bar's window.
+        try {
+            Class<?> manager = Class.forName("android.view.WindowManagerGlobal");
+            Object instance = manager.getMethod("getInstance").invoke(null);
+            java.lang.reflect.Field views = manager.getDeclaredField("mViews");
+            views.setAccessible(true);
+            for (Object candidate : (List<?>) views.get(instance)) {
+                if (candidate instanceof View && ((View) candidate).hasWindowFocus()) return (View) candidate;
+            }
+        } catch (Throwable ignored) {
+        }
+        return fallback.getRootView();
+    }
+
     /**
      * {@code --es id <name> [--ei index <n>] [--es path <i/j/...>]}: the n-th view
-     * with that resource name, then the child the path leads to. A String is an
+     * with that resource name, up by {@code --ei up}, then the child the path leads to. A String is an
      * error message.
      */
     private static Object target(Intent intent) {
@@ -515,10 +530,15 @@ public final class DebugBridge {
         int id = Hiders.resolveId(context, name);
         if (id == 0) return "ERROR no resource id " + name;
         List<View> found = new ArrayList<>();
-        collectById(tabBar.getRootView(), id, found);
+        collectById(debugRoot(tabBar), id, found);
         int index = intent.getIntExtra("index", 0);
         if (index >= found.size()) return "ERROR only " + found.size() + " " + name;
         View view = found.get(index);
+        int up = intent.getIntExtra("up", 0);
+        for (int i = 0; i < up; i++) {
+            if (!(view.getParent() instanceof View)) return "ERROR no parent";
+            view = (View) view.getParent();
+        }
         String path = intent.getStringExtra("path");
         if (path != null) {
             for (String step : path.split("/")) {

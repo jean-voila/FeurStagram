@@ -368,6 +368,17 @@ public final class Config {
         prefs.edit().putLong("follow_prompt_update_time", updateTime).apply();
     }
 
+    /** A follow-button click is an installation-wide choice, independent of updates. */
+    public static boolean hasFollowedOfficialAccount() {
+        return getBlocked("official_account_follow_clicked", false);
+    }
+
+    public static void rememberOfficialAccountFollow() {
+        SharedPreferences prefs = prefs();
+        // Persist before opening the deep link, which may immediately stop this activity.
+        if (prefs != null) prefs.edit().putBoolean("official_account_follow_clicked", true).commit();
+    }
+
     public static void setNeedsRestart() { sNeedsRestart = true; }
 
     public static boolean isRestartPending() { return sNeedsRestart; }

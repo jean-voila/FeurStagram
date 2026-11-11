@@ -6,6 +6,38 @@ All notable changes to Feurstagram should be documented in this file.
 
 Nothing yet.
 
+## v455-0-0-51-72
+
+### Fixed
+- **Stories and Notes on account-dependent inbox layouts** (#169, #165, #144).
+  When Quoicouview or the Notes block needs list-adapter hooks, select Instagram's
+  view-based inbox consistently in both rendering and data delivery. The fully
+  Compose inbox bypasses that adapter entirely. List hooks now also follow the
+  adapter's convenience wrapper to the common update method, covering updates
+  that carry a completion callback. Notes are removed as rows and stories are
+  inserted only in the inbox.
+- **Quoicouview story updates** (#162). Forward the inbox and story viewer lifecycle
+  to the tray's data controller as well as its visual controller. Returning to
+  Messages runs Instagram's native client-side story sort without its background
+  time throttle. Pull-to-refresh in Messages also requests the native stories
+  tray, independently of the blocked home timeline.
+- **Post caption preservation** (#161). Both caption input renderers save edits
+  synchronously through Instagram's existing draft setter before dispatching the
+  asynchronous edit event. Opening music or story options no longer relies on asynchronous caption
+  delivery to update the current draft. Clearing a caption still
+  saves an empty string; no cross-post caption cache is introduced.
+- **Official account prompt** (#167). Clicking Follow commits a separate local
+  preference before opening the profile. Future launches and in-place updates
+  skip the prompt after that click, independently of the package update time.
+
+### Changed
+- Updated the Instagram base to **455.0.0.51.72**. Story launch parameters now allow
+  the added list argument; camera access follows the panel updater that Instagram
+  moved out of the tab-change handler.
+- Debug UI inspection and clicks can target the focused activity/dialog window,
+  including the post editor and music browser. Click targets accept a parent
+  offset for controls without their own resource identifier.
+
 ## v454-0-0-54-77
 
 ### Added

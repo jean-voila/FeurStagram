@@ -270,7 +270,28 @@ public final class Quoicouview {
     private static void resumeLateController() throws ReflectiveOperationException {
         if (!sInboxResumed) return;
         Object controller = resumeController();
-        if (controller != null) controller.getClass().getMethod("onResume").invoke(controller);
+        if (controller != null) controller.getClass().getMethod("feurstagramResumeTray").invoke(controller);
+    }
+
+    /** Keep the inbox's refresh action and request stories from that same user gesture. */
+    public static Runnable inboxRefreshAction(final Runnable original) {
+        if (original == null || !Config.isQuoicouviewEnabled()) return original;
+        return () -> {
+            original.run();
+            refreshStories();
+        };
+    }
+
+    /** Pull-to-refresh in Messages also requests the native stories tray, without loading the feed. */
+    public static void refreshStories() {
+        if (!Config.isQuoicouviewEnabled() || Config.isStoriesBlocked() || !sInboxResumed
+                || sStackedViewer.get() != null || sAwaitingViewer) return;
+        Object controller = sTrayController.get();
+        if (controller == null || !isFeedAttached(controller)) return;
+        try {
+            controller.getClass().getMethod("feurstagramRefreshTray").invoke(controller);
+        } catch (ReflectiveOperationException ignored) {
+        }
     }
 
     /** Whether the fragment a tray controller belongs to is attached. */
