@@ -93,6 +93,11 @@ if [ -z "$CLI" ]; then
     echo "Error: Morphe CLI not found under tools/ (morphe-cli-*.jar / morphe-desktop-*.jar)." >&2
     exit 1
 fi
+if [ -z "$APKSIGNER" ]; then
+    echo "Error: apksigner not found under \$ANDROID_HOME/build-tools." >&2
+    echo "       Install Android SDK build-tools to sign and verify the output APK." >&2
+    exit 1
+fi
 
 # A split bundle has to become one universal APK before the patcher can touch it.
 case "$APK" in
@@ -150,12 +155,6 @@ if [ -n "${FEURSTAGRAM_KEYSTORE_PASS:-}" ]; then
         echo "Error: keystore not found: $KEYSTORE" >&2
         exit 1
     fi
-    if [ -z "$APKSIGNER" ]; then
-        echo "Error: apksigner not found under \$ANDROID_HOME/build-tools." >&2
-        echo "       Install the Android SDK build-tools, or unset FEURSTAGRAM_KEYSTORE_PASS" >&2
-        echo "       to sign with a throwaway key (testing only)." >&2
-        exit 1
-    fi
     SIGN_WITH_APKSIGNER=1
     ARGS+=(--unsigned)
 fi
@@ -177,11 +176,21 @@ if [ "$SIGN_WITH_APKSIGNER" -eq 1 ]; then
         --v3-signing-enabled true \
         --v4-signing-enabled false \
         "$OUT"
-    # apksigner only writes a v4 .idsig when v4 is enabled; clean up just in case.
     rm -f "$OUT.idsig"
-    "$APKSIGNER" verify --print-certs "$OUT" 2>/dev/null \
-        | grep -i "SHA-256" | head -1 | sed 's/^/    cert /' || true
 fi
+
+if ! VERIFY_OUTPUT="$("$APKSIGNER" verify --verbose --print-certs "$OUT" 2>&1)"; then
+    echo "Error: output APK signature verification failed." >&2
+    printf '%s\n' "$VERIFY_OUTPUT" >&2
+    exit 1
+fi
+CERT_LINE="$(printf '%s\n' "$VERIFY_OUTPUT" | grep -i "certificate SHA-256 digest:" | head -1 || true)"
+if [ -z "$CERT_LINE" ]; then
+    echo "Error: apksigner found no developer certificate in the output APK." >&2
+    printf '%s\n' "$VERIFY_OUTPUT" >&2
+    exit 1
+fi
+echo "    $CERT_LINE"
 
 # Surface which patches actually applied. The CLI aborts on the first failure, so
 # this is mostly a receipt — but a fingerprint that quietly stopped matching on a
