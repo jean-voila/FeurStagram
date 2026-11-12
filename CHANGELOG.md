@@ -6,6 +6,30 @@ All notable changes to Feurstagram should be documented in this file.
 
 Nothing yet.
 
+## v455-0-0-51-72-1
+
+### Fixed
+- **Content blocks preserve native requests.** Feed, stories, Explore, Reels, ad and
+  recommendation requests run through Instagram's own transport. Successful delivery
+  JSON is filtered incrementally after reception instead of throwing an IOException
+  before sending. Empty-surface pagination is disabled locally to prevent reload
+  loops. HTTP errors and security/account notices keep their native payloads.
+- Both Reels delivery lists (`items` and `items_with_ads`) and streamed JSON documents
+  are filtered. Home-feed and story-tray parse hooks also honour the surface block.
+- The updater and What's new recognise this revision without changing Instagram's
+  package version metadata. Existing builds detect the numeric revision, while this
+  build does not repeatedly prompt to install itself. Future Instagram bases keep
+  their original identity until they receive a revision of their own.
+
+### Changed
+- Logging, seen events, uploads, statistics, privacy/security notices and commerce
+  requests are no longer cancelled. This restores native telemetry and consumes API
+  bandwidth even when content is hidden; it does not simulate views or guarantee
+  protection from account restrictions. Documentation reflects this change.
+- The Following-only request header is applied only when the home feed is visible.
+- Debug builds expose aggregate completed-response counts through `NETSTATS`.
+- Instagram base remains **455.0.0.51.72**.
+
 ## v455-0-0-51-72
 
 ### Fixed

@@ -5,7 +5,7 @@
   <p>
     Feurstagram is <a href="https://jean-voila.github.io/FeurStagram/instagram-without-reels/">Instagram without Reels</a>:
     an open-source patch for the official Android app that removes the feed,
-    Reels, Explore, ads and telemetry, while keeping DMs, stories, search,
+    Reels, Explore and ads, while keeping DMs, stories, search,
     notifications and profiles.
   </p>
 </div>
@@ -56,7 +56,7 @@
 | Direct Messages | Endless Home feed |
 | Stories | Reels surfaces |
 | Search and profiles | Explore and suggested-account recommendations |
-| Notifications | Ads, shopping preloads, and telemetry |
+| Notifications | Ads and suggested content |
 
 ## Preview
 
@@ -155,17 +155,17 @@ combination.
 
 | Feature | Default | Toggleable | How |
 |---------|---------|------------|-----|
-| **Home Feed** | Blocked | Yes | Network-level blocking |
+| **Home Feed** | Blocked | Yes | Response filtering |
 | **Following feed only** | Off | Yes | Feed-request header rewrite |
-| **Explore** | Blocked | Yes | Network-level blocking |
-| **Reels** | Blocked | Yes | Network-level blocking + Tab hidden |
-| **Stories** | Visible | Yes | Network-level blocking |
-| **Suggested accounts** | Blocked | Yes | Network-level + feed-parse blocking |
+| **Explore** | Blocked | Yes | Response filtering |
+| **Reels** | Blocked | Yes | Response filtering + Tab hidden |
+| **Stories** | Visible | Yes | Response filtering |
+| **Suggested accounts** | Blocked | Yes | Response filtering + feed-parse filtering |
 | **Instants (+ button in DMs)** | Blocked | Yes | View visibility hidden |
 | **Notes (text bubbles above DMs)** | Blocked | Yes | Row removed from the inbox list |
-| **Ads** | Blocked | Yes | Network-level + feed-parse blocking |
-| **Analytics & telemetry** | Blocked | No | Always blocked |
-| **Shopping / commerce preloads** | Blocked | No | Always blocked |
+| **Ads** | Blocked | Yes | Response filtering + feed-parse filtering |
+| **Analytics & telemetry** | Native | No | Instagram requests preserved |
+| **Shopping / commerce preloads** | Native | No | Instagram requests preserved |
 
 **Following feed only** is a softer alternative to blocking the Home Feed
 entirely: leave the feed unblocked and turn this on to get a chronological feed
@@ -220,7 +220,7 @@ window, with a back arrow; Back returns to the overview. The sections are:
   forcing its window into HDR mode, which lifts the black floor and washes out
   the dark UI on HDR OLED screens. Turn it off to keep Instagram's HDR behaviour.
   *Instagram popups* (on by default) drops Instagram's own toasts, such as the
-  "Couldn't refresh feed" message a blocked surface makes it raise.
+  native transient network-error messages. Content blocks no longer manufacture these errors.
 - **Landing page** — choose which surface the app jumps to on cold start
   (Home feed, Search, Direct messages, or Profile). A surface whose navigation
   icon is hidden can't be picked, and stops being used if you hide it later:
@@ -294,7 +294,7 @@ Feurstagram/
 ├── build.sh                      # Build the bundle and apply it to an APK
 ├── patches/                      # Patches (Kotlin): where to inject, by fingerprint
 │   └── src/main/kotlin/com/feurstagram/patches/
-│       ├── network/              # Network blocking + feed-item filter + following-feed
+│       ├── network/              # Response filtering + feed-item filter + following-feed
 │       ├── settings/             # Long-press settings entry point (tab bar) + Back history
 │       ├── quoicouview/          # Stories tray as a row of the Direct inbox
 │       ├── signature/            # Signing-cert trust bypass (deep links)
@@ -389,13 +389,29 @@ first, so it always gets the one with a tab pager and a Messages tab. The pager'
 pages load when first shown, so the feed's page is told to load right away, for
 launches that do not start on Home.
 
-### Network Blocking
-A fingerprint matches `TigonServiceLayer.startRequest` (a named class) and
-injects a call on the request URI. Blocked calls throw an `IOException`, so the
-surface fails to load and stays empty.
+### Content response filtering
+Instagram sends requests through its own Tigon transport, with its own authentication,
+parameters, scheduling and retries. Feurstagram no longer throws a network error to
+hide a surface. After a successful response arrives, an incremental JSON filter
+empties the root content lists for surfaces the user blocked, retaining metadata and
+security messages. Pagination flags for an emptied surface are disabled locally to
+avoid repeated automatic load-more requests. The full response still crosses the
+network; it is not displayed, and media URLs removed from the response are not fetched
+just to imitate a view.
+
+The filter handles UTF-8, nested objects, escaped strings and arbitrary transport
+chunk boundaries without buffering a full response. Non-success HTTP responses pass
+through unchanged. Parse hooks also suppress home feed units and story-tray entries.
+
+Logging, seen events, uploads, statistics, security notices and commerce requests now
+follow Instagram's native behavior. Blocking content therefore no longer saves the
+API traffic associated with loading it, and **Instagram telemetry is no longer
+blocked**. Feurstagram adds no synthetic views, interactions, heartbeat requests or
+background polling. This change does not establish why an account was restricted,
+and does not guarantee protection from restrictions.
 
 ### Feed Item Filtering
-Network blocking can't touch ads and "suggested" units that Instagram injects
+Endpoint selection alone cannot separate ads and "suggested" units that Instagram injects
 **inline** into the Home Feed payload — they arrive inside the normal
 `/feed/timeline/` response, not on a separate URL. A second fingerprint matches
 the feed-item JSON deserialiser (by the stable wire-format type tokens like
@@ -434,7 +450,7 @@ Suggested accounts mixed into the story tray are not a separate request: they ar
 `reel_type: "suggested_user"` entries of the tray response itself. A parse-layer hook drops
 them when *Suggested accounts* is blocked, the same way feed ads are filtered.
 
-#### Blocked network paths
+#### Content response paths (requests remain enabled)
 
 | Path / pattern | Purpose | Toggleable |
 |----------------|---------|------------|
@@ -444,17 +460,17 @@ them when *Suggested accounts* is blocked, the same way feed ads are filtered.
 | `/clips/home/`, `/clips/discover`, `/clips/get_blend_medias/` | Reels feed + discovery + Blend reels | Yes |
 | `/discover/ayml/`, `/discover/sectioned_ayml/`, `/discover/chaining/`, `/discover/recommended_accounts_for_category/`, `/discover/suggested_businesses/`, `/discover/recs_from_friends_suggestions/`, `/discover/recs_from_friends_user_info/`, `/discover/surface_with_su/`, `/discover/fetch_suggestion_details/`, `/discover/account_discovery/`, `/discover/reshare_suggestions/`, `/fbsearch/accounts_recs/`, `/friendships/feed_favorites_suggestions/`, `/friendships/share_to_friends_story_suggested_users/`, `/direct_v2/search_friending_suggestions/`, `/business/discovery/suggest_business/` | Suggested-account recommendations (profile "Suggested for you", stories-tray injected accounts, search null-state recs, post-follow chaining, friend/business suggestions) | Yes |
 | `/api/v1/ads/` (all `ads/*`), `/feed/async_ads_ranking/`, `/feed/shop_everything_feed_of_ads*`, `/feed/user_interests_contextual_feed_of_ads/`, `/discover/chaining_experience_contextual_ads/`, `/discover/chaining_experience_notification_ads/`, `/direct_v2/ads_for_ctd_ads_thread_view/`, `/direct_v2/should_show_ad_responses_tab/`, `/profile_ads/get_profile_ads/`, `/stories/stories_high_intent_discovery_ads/`, `/stories/stories_intent_aware_ads/`, `/commerce/product_collections/ads_collection_page/` | Sponsored ads injected into the feed, stories, profile, DMs, Explore chaining and commerce | Yes |
-| `/logging/` | Client event logging | No |
-| `/async_ads_privacy/` | Ad-related tracking | No |
-| `/async_critical_notices/` | Engagement nudge analytics | No |
-| `/api/v1/media/.../seen/` (path contains `/api/v1/media/` and `/seen`) | Post “seen” tracking | No |
-| `/api/v1/fbupload/` | Telemetry upload | No |
-| `/api/v1/stats/` | Performance / usage stats | No |
-| `/api/v1/commerce/`, `/api/v1/shopping/`, `/api/v1/sellable_items/` | Shopping / commerce preloads | No |
-
 Note: despite the name, `/feed/reels_tray` is the stories tray endpoint in Instagram internals.
 
-Matching uses `String.contains()` on the URI path. Instagram changes URL shapes over time; adjust the rules in `extensions/.../Block.java` if a block stops matching.
+Content selection is restricted to Instagram hosts and uses `String.contains()` on the URI path. Instagram changes URL shapes over time; adjust the rules in `extensions/.../Block.java` if a block stops matching.
+
+### Feurstagram release revisions
+
+A numeric suffix such as `v455-0-0-51-72-1` identifies a new patch release on the
+same Instagram base. `ReleaseVersion` maps that base to the revised updater identity;
+Instagram's package version and network identity remain unchanged. When preparing
+another revision, update that mapping. Other Instagram bases keep their original
+release identity until explicitly revised.
 
 ## Updating for New Instagram Versions
 

@@ -2,17 +2,9 @@ package com.feurstagram.extension;
 
 import android.util.Log;
 
-import java.io.IOException;
 import java.net.URI;
 
-/**
- * Network content blocking, invoked from Instagram's TigonServiceLayer just
- * after each request URI is materialised. Throwing an IOException there makes
- * Instagram treat the request as a network failure and the surface stays empty.
- *
- * Toggleable blocks are gated on {@link Config}; analytics and commerce
- * endpoints are always blocked.
- */
+/** Content policy and parse-level filtering. Requests always use Instagram's transport. */
 public final class Block {
 
     private Block() {}
@@ -87,45 +79,27 @@ public final class Block {
             "/commerce/product_collections/ads_collection_page/",
     };
 
-    /** Main hook: throw if this request should be blocked. */
-    public static void throwIfBlocked(URI uri) throws IOException {
-        if (uri == null) return;
+    /** Observe the native request without cancelling, replaying or modifying it. */
+    public static void onRequest(URI uri) {
+        if (uri != null && DebugBridge.isNetworkTraceEnabled()) {
+            Log.i("FeurNet", "request " + uri.getPath());
+        }
+    }
+
+    /** Only content delivery is filtered; logging, seen, uploads and security are untouched. */
+    static boolean hidesResponse(URI uri) {
+        if (uri == null || uri.getHost() == null || uri.getPath() == null) return false;
+        String host = uri.getHost().toLowerCase(java.util.Locale.ROOT);
+        if (!host.equals("instagram.com") && !host.endsWith(".instagram.com")) return false;
         String path = uri.getPath();
-        if (path == null) return;
-
-        // Debug builds only (see DebugBridge): logs every path Instagram asks for,
-        // which is how a surface that started arriving over a new endpoint gets
-        // found. Always false in a release build.
-        if (DebugBridge.isNetworkTraceEnabled()) Log.i("FeurNet", path);
-
-        // --- Toggleable content blocks ---
-        if (Config.isFeedBlocked() && path.contains("/feed/timeline/")) throw blocked();
-        if (Config.isStoriesBlocked() && path.contains("/feed/reels_tray")) throw blocked();
-        if (Config.isExploreBlocked() && path.contains("/discover/topical_explore")) throw blocked();
-        if (Config.isReelsBlocked()
-                && (path.contains("/clips/home/")
-                || path.contains("/clips/discover")
-                || path.contains("/clips/get_blend_medias/"))) {
-            throw blocked();
-        }
-        if (Config.isSuggestedBlocked() && containsAny(path, SUGGESTED)) throw blocked();
-        if (Config.isAdsBlocked() && containsAny(path, ADS)) throw blocked();
-
-        // --- Always-blocked analytics / commerce ---
-        // No trailing slash: the family has a "_www" sibling
-        // (/feed/injected_reels_media_www/) that a slash-terminated match misses.
-        if (path.contains("/feed/injected_reels_media")
-                || path.contains("/logging/")
-                || path.contains("/async_ads_privacy/")
-                || path.contains("/async_critical_notices/")
-                || isMediaSeen(path)
-                || path.contains("/api/v1/fbupload/")
-                || path.contains("/api/v1/stats/")
-                || path.contains("/api/v1/commerce/")
-                || path.contains("/api/v1/shopping/")
-                || path.contains("/api/v1/sellable_items/")) {
-            throw blocked();
-        }
+        return (Config.isFeedBlocked() && path.contains("/feed/timeline/"))
+                || (Config.isStoriesBlocked() && path.contains("/feed/reels_tray"))
+                || (Config.isExploreBlocked() && path.contains("/discover/topical_explore"))
+                || (Config.isReelsBlocked() && (path.contains("/clips/home/")
+                    || path.contains("/clips/discover") || path.contains("/clips/get_blend_medias/")
+                    || path.contains("/feed/injected_reels_media")))
+                || (Config.isSuggestedBlocked() && containsAny(path, SUGGESTED))
+                || (Config.isAdsBlocked() && containsAny(path, ADS));
     }
 
     /**
@@ -137,7 +111,8 @@ public final class Block {
         if (key == null) return null;
         // A new unit starts: whatever media it wraps is parsed right after this.
         MEDIA_IS_AD.get()[0] = false;
-        boolean drop = (Config.isAdsBlocked() && equalsAny(key, AD_FEED_UNITS))
+        boolean drop = Config.isFeedBlocked()
+                || (Config.isAdsBlocked() && equalsAny(key, AD_FEED_UNITS))
                 || (Config.isSuggestedBlocked() && equalsAny(key, SUGGESTED_FEED_UNITS));
         // Debug builds only (see DebugBridge): shows every unit type the timeline
         // actually contains and whether it was dropped — the way to tell a patch
@@ -212,7 +187,9 @@ public final class Block {
      * the tray response itself, so the network block cannot catch them.
      */
     public static Object filterTrayEntry(Object entry) {
-        if (entry == null || !Config.isSuggestedBlocked()) return entry;
+        if (entry == null) return null;
+        if (Config.isStoriesBlocked()) return null;
+        if (!Config.isSuggestedBlocked()) return entry;
         try {
             String getter = trayEntryTypeGetter();
             if (getter.isEmpty()) return entry;
@@ -234,10 +211,6 @@ public final class Block {
         return false;
     }
 
-    private static boolean isMediaSeen(String path) {
-        return path.contains("/api/v1/media/") && path.contains("/seen");
-    }
-
     private static boolean containsAny(String path, String[] needles) {
         for (String needle : needles) {
             if (path.contains(needle)) return true;
@@ -245,7 +218,4 @@ public final class Block {
         return false;
     }
 
-    private static IOException blocked() {
-        return new IOException("Blocked by Feurstagram");
-    }
 }

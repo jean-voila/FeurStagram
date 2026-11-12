@@ -380,7 +380,7 @@ public final class UpdateChecker implements Runnable {
         return value.replace('-', '.');
     }
 
-    /** Installed versionName (Instagram's), e.g. "435.0.0.37.76". "0" on failure. */
+    /** Installed Feurstagram release, including a revision when assigned. "0" on failure. */
     private String installedVersion() {
         // A debug build reports an ancient version so the whole update flow can be
         // exercised against the real release. Always null in a release build.
@@ -391,14 +391,13 @@ public final class UpdateChecker implements Runnable {
     }
 
     /**
-     * The genuine installed versionName, never the debug pretence: "What's new"
-     * looks up a release by this exact tag, so a made-up version would only ever
-     * 404.
+     * The installed release identity, never the debug pretence. Package metadata
+     * stays Instagram's; only the updater and "What's new" use our revision tag.
      */
     private static String realInstalledVersion(Context context) {
         try {
             PackageManager pm = context.getPackageManager();
-            return pm.getPackageInfo(context.getPackageName(), 0).versionName;
+            return ReleaseVersion.forInstagram(pm.getPackageInfo(context.getPackageName(), 0).versionName);
         } catch (Throwable t) {
             return null;
         }

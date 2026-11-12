@@ -2,7 +2,7 @@
 
 ## What is Feurstagram?
 
-Feurstagram is an open-source Android patch for Instagram that removes distracting features such as feed, Reels, Explore, ads and telemetry while keeping useful features like DMs, stories, profiles, search and notifications.
+Feurstagram is an open-source Android patch for Instagram that removes distracting features such as feed, Reels, Explore and ads while keeping useful features like DMs, stories, profiles, search and notifications.
 
 ## Is Feurstagram affiliated with Instagram or Meta?
 
@@ -31,6 +31,13 @@ The classic APK replaces the regular Instagram app because it keeps Instagram's 
 The clone APK is designed to install alongside the regular Instagram app by using a different package ID.
 
 Use the clone APK if you want to keep the official Instagram app installed at the same time.
+
+## Are blocked contents still downloaded?
+
+Instagram still sends its normal API requests. Feurstagram filters successful content
+responses after reception so the selected lists stay hidden. The requests and
+Instagram's native telemetry are no longer blocked; this can use more data than older
+builds. The app does not generate fake views or interactions.
 
 ## Can my Instagram account be banned?
 

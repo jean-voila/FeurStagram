@@ -25,3 +25,7 @@ local.properties
 
 # OS
 .DS_Store
+
+# Python test caches
+__pycache__/
+*.py[cod]

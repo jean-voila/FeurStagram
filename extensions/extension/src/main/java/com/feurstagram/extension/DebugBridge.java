@@ -62,7 +62,7 @@ public final class DebugBridge {
 
     private static final String[] ACTIONS = {
             "SET", "GET", "REMOVE", "DUMP", "NAV", "TRACE", "UPDATE", "WHATSNEW", "RESET", "RESTART", "SETTINGS", "PING",
-            "TREE", "INTRO", "CLICK", "TOUCH", "FIELDS",
+            "TREE", "INTRO", "CLICK", "TOUCH", "FIELDS", "NETSTATS",
     };
 
     private static boolean sInstalled;
@@ -74,6 +74,37 @@ public final class DebugBridge {
      * class, so a release build reads a field that is always false.
      */
     private static volatile boolean sNetworkTrace;
+
+    private static final Map<String, long[]> NETWORK_STATS = new java.util.LinkedHashMap<>();
+
+    /** Debug-only aggregates, including hidden responses completed before TRACE is enabled. */
+    static void recordResponse(String path, int status, long received, long delivered, int removed) {
+        if (!sInstalled) return;
+        String surface = path.contains("/feed/timeline/") ? "timeline"
+                : path.contains("/feed/reels_tray") ? "stories"
+                : path.contains("/discover/topical_explore") ? "explore"
+                : path.contains("/clips/") ? "reels" : "other";
+        synchronized (NETWORK_STATS) {
+            long[] counts = NETWORK_STATS.get(surface);
+            if (counts == null) NETWORK_STATS.put(surface, counts = new long[5]);
+            counts[0]++;
+            if (status >= 200 && status < 300) counts[1]++;
+            counts[2] += received; counts[3] += delivered; counts[4] += removed;
+        }
+    }
+
+    private static String networkStats(boolean reset) {
+        StringBuilder out = new StringBuilder("surface completed success received delivered removed\n");
+        synchronized (NETWORK_STATS) {
+            for (Map.Entry<String, long[]> entry : NETWORK_STATS.entrySet()) {
+                out.append(entry.getKey());
+                for (long value : entry.getValue()) out.append(' ').append(value);
+                out.append('\n');
+            }
+            if (reset) NETWORK_STATS.clear();
+        }
+        return out.toString();
+    }
 
     /** @see #sNetworkTrace */
     public static boolean isNetworkTraceEnabled() {
@@ -148,6 +179,8 @@ public final class DebugBridge {
         switch (command) {
             case "PING":
                 return "ok";
+            case "NETSTATS":
+                return networkStats(intent.getBooleanExtra("reset", false));
             case "SET":
                 return set(intent);
             case "GET":

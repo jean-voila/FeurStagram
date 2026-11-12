@@ -16,9 +16,20 @@ Authentication is handled by Instagram inside the app.
 
 ## Network behavior
 
-Feurstagram may block or modify some Instagram app behavior depending on the active patches.
+Instagram's native requests remain enabled, including feed and discovery loads,
+logging, seen events, statistics, uploads and commerce. The content switches filter
+successful delivery responses locally, after reception, so blocked lists do not reach
+the interface. HTTP errors and security notices retain Instagram's handling.
 
-Where possible, patches related to ads, telemetry, or network behavior should be documented. The README documents the current blocked network paths.
+**Instagram telemetry is no longer blocked.** Hidden content still consumes API data;
+CDN assets for removed media are not fetched just to simulate viewing them. No
+synthetic views, interactions or periodic traffic are generated. The optional
+Following-only feed still changes the pagination header when the feed is visible.
+
+Feurstagram's own code does not collect these data or route requests through a proxy.
+See the README for the selected response paths and filtering behavior. This behavior
+does not guarantee that Instagram will accept a modified client or prevent account
+restrictions.
 
 ## Third parties
 

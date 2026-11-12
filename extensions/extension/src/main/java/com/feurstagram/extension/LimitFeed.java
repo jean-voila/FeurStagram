@@ -20,7 +20,7 @@ public final class LimitFeed {
 
     public static Map<String, String> setFollowingHeader(Map<String, String> headers) {
         if (headers == null) return null;
-        if (!Config.isFollowingFeedOnly()) return headers;
+        if (!Config.isFollowingFeedOnly() || Config.isFeedBlocked()) return headers;
 
         // Only rewrite the default ranked-feed fetch; leave other paginations
         // (load-more, etc.) untouched so scrolling still works.

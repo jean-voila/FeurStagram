@@ -30,6 +30,7 @@
         "name": "Feurstagram press kit",
         "url": "https://jean-voila.github.io/FeurStagram/press/",
         "inLanguage": "en",
+        "dateModified": "2026-11-12",
         "about": {
             "@type": "SoftwareApplication",
             "name": "Feurstagram",
@@ -75,7 +76,7 @@
         <p>Email: <a href="mailto:feurstagram@gmail.com"><strong>feurstagram@gmail.com</strong></a></p>
 
         <h2>About Feurstagram</h2>
-        <p>Feurstagram is a free, open-source Android app based on the official Instagram app. Open-source patches remove the home feed, Reels, Explore, suggested accounts, ads and telemetry, while direct messages, stories, search, profiles and notifications keep working. Each block can be switched on or off from an in-app settings page. The project is developed in the open on GitHub and distributed as an APK through GitHub releases.</p>
+        <p>Feurstagram is a free, open-source Android app based on the official Instagram app. Open-source patches remove the home feed, Reels, Explore, suggested accounts, ads, while direct messages, stories, search, profiles and notifications keep working. Each block can be switched on or off from an in-app settings page. The project is developed in the open on GitHub and distributed as an APK through GitHub releases.</p>
 
         <dl class="facts">
             <dt>Name</dt><dd>Feurstagram</dd>
@@ -104,7 +105,7 @@
         </ul>
 
         <h2>How it works</h2>
-        <p>Feurstagram applies patches to the official Instagram Android APK with the open-source Morphe patcher. The patches locate code by stable traits rather than obfuscated names, so they keep working across Instagram updates. Blocked surfaces are stopped at the network level: requests for the feed, Reels or Explore are refused inside the app, so that content is never downloaded. Analytics and telemetry requests are blocked the same way. The app does not use a proxy server and does not collect user data.</p>
+        <p>Feurstagram applies patches to the official Instagram Android APK with the open-source Morphe patcher. The patches locate code by stable traits rather than obfuscated names, so they keep working across Instagram updates. Requests for the feed, Reels and Explore use Instagram’s native transport. Successful responses are filtered locally so blocked content is not displayed. Native analytics and telemetry requests remain enabled; this uses more API data than earlier builds and does not guarantee protection from account restrictions. The app does not use a proxy server and does not collect user data.</p>
 
         <h2>Screenshots</h2>
         <p>Same account, same screen, captured on September 13, 2026 on an Android phone set to French. Click an image to download it in full resolution (1080 × 2410 PNG).</p>

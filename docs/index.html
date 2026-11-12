@@ -52,7 +52,7 @@
         "alternateName": "Instagram without Reels",
         "operatingSystem": "Android",
         "applicationCategory": "LifestyleApplication",
-        "description": "Free, open-source patch for the official Instagram Android app that removes Reels, the home feed, Explore, suggested accounts, ads and telemetry while keeping direct messages, stories, search, profiles and notifications.",
+        "description": "Free, open-source patch for the official Instagram Android app that removes Reels, the home feed, Explore, suggested accounts, ads while keeping direct messages, stories, search, profiles and notifications.",
         "license": "https://www.gnu.org/licenses/gpl-3.0.html",
         "isAccessibleForFree": true,
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
@@ -715,7 +715,7 @@
                     <div class="feature-icon blocked">❌</div>
                     <span class="status-badge blocked">Blocked</span>
                     <h3>Feed Posts</h3>
-                    <p>The endless home feed is blocked at the network level. No more doomscrolling.</p>
+                    <p>The endless home feed is hidden after its native request completes. No more doomscrolling.</p>
                 </div>
 
                 <div class="feature-card">
@@ -729,7 +729,7 @@
                     <div class="feature-icon blocked">❌</div>
                     <span class="status-badge blocked">Hidden</span>
                     <h3>Reels Tab</h3>
-                    <p>Reels are blocked at the network level and the tab icon itself is hidden from the bottom bar. No infinite video loops.</p>
+                    <p>Reels content is filtered after reception and the tab icon is hidden from the bottom bar. No infinite video loops.</p>
                 </div>
 
                 <div class="feature-card">
@@ -831,7 +831,7 @@
 
                 <div class="feature-card">
                     <h3>Documented behavior</h3>
-                    <p>The README documents the current blocked network paths for feed, Reels, Explore, ads, telemetry and related features.</p>
+                    <p>The README documents content response filtering. Native requests, including Instagram telemetry, remain enabled.</p>
                 </div>
             </div>
         </section>
