@@ -189,8 +189,14 @@ public final class UpdateChecker implements Runnable {
                 return;
             }
 
-            String installed = installedVersion();
-            if (isNewer(normalize(tag), installed)) {
+            String installed = installedVersion(context);
+            boolean newer = isNewer(normalize(tag), installed);
+            // Remembered for the red dot on the settings button, whatever happens next.
+            Config.setLatestKnownRelease(newer ? tag : null);
+            ProfileSettingsButton.refreshBadges();
+            if (newer) {
+                // The automatic page comes up at most once a day; the dot stays.
+                if (!manual && !isPromptDue()) return;
                 final String apkUrl = extractApkUrl(body, isCloneBuild());
                 final String notes = extractReleaseBody(body);
                 final long size = extractApkSize(body, isCloneBuild());
@@ -381,13 +387,51 @@ public final class UpdateChecker implements Runnable {
     }
 
     /** Installed Feurstagram release, including a revision when assigned. "0" on failure. */
-    private String installedVersion() {
+    private static String installedVersion(Context context) {
         // A debug build reports an ancient version so the whole update flow can be
         // exercised against the real release. Always null in a release build.
         String pretend = DebugBridge.pretendInstalledVersion();
         if (pretend != null) return pretend;
         String real = realInstalledVersion(context);
         return real == null ? "0" : real;
+    }
+
+    /**
+     * Whether the last check (automatic or manual) found a release newer than the
+     * one running. Read from the stored tag, so it holds across launches without a
+     * network call, and goes false by itself once that release is installed.
+     */
+    static boolean isUpdatePending() {
+        String latest = Config.getLatestKnownRelease();
+        Context app = Config.getAppContext();
+        if (latest == null || app == null) return false;
+        return isNewer(normalize(latest), installedVersion(app));
+    }
+
+    /** The pending release's version ("456.0.0.24.78"), or null when up to date. */
+    static String pendingVersion() {
+        return isUpdatePending() ? normalize(Config.getLatestKnownRelease()) : null;
+    }
+
+    /**
+     * Whether the automatic "Update available" page may come up: not yet today.
+     * A calendar day rather than 24 hours, so someone who opens the app every
+     * morning sees it every morning, not every other one.
+     */
+    private static boolean isPromptDue() {
+        return Config.getUpdatePromptDay() != today();
+    }
+
+    /** Today's local date as yyyyddd (year and day of the year). */
+    static int today() {
+        java.util.Calendar now = java.util.Calendar.getInstance();
+        return now.get(java.util.Calendar.YEAR) * 1000 + now.get(java.util.Calendar.DAY_OF_YEAR);
+    }
+
+    /** Open the "Update available" page for the pending release, from the settings. */
+    static void openPendingUpdate(Context context) {
+        if (context == null) return;
+        new Thread(new UpdateChecker(context, true), "FeurStagram-update-open").start();
     }
 
     /**
@@ -598,6 +642,7 @@ public final class UpdateChecker implements Runnable {
 
             dialog.show();
             availablePrompt = new WeakReference<>(dialog);
+            Config.setUpdatePromptDay(today());
         } catch (Throwable ignored) {
         }
     }

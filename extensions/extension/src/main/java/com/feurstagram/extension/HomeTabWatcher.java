@@ -10,11 +10,12 @@ import android.view.ViewTreeObserver;
  * bottom-left) is inflated, then installs a long-press listener on it that opens
  * the Feurstagram settings, and detaches.
  *
- * This is the sole settings entry point. An injected action-bar button was tried
- * but failed to appear on many devices, since it depends on the feed's top action
- * bar being present and laid out a particular way. Long-pressing Home only needs
- * the tab bar, which always exists, so settings stay reachable everywhere. The id
- * is resolved by name (with a clone fallback) so it survives Instagram version bumps.
+ * The visible way in is now {@link ProfileSettingsButton}, an icon in the header
+ * of the user's own profile; this gesture stays for those used to it. (A button in
+ * the feed's top action bar was tried first and dropped: that bar is only there
+ * on the feed.)
+ * Long-pressing Home only needs the tab bar, which always exists. The id is
+ * resolved by name (with a clone fallback) so it survives Instagram version bumps.
  *
  * When the user hides the Home icon (issue #127) the gesture moves to the first
  * icon still on the bar ({@link Hiders#settingsTab}). Settings changes restart the

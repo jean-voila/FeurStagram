@@ -23,7 +23,7 @@ If you prefer not to trust a prebuilt APK, follow the [build-from-source guide](
 3. Check the release notes for the supported Instagram version.
 4. Install the APK on your Android device.
 5. Log in through Instagram as usual.
-6. Long-press the Home tab to open Feurstagram settings.
+6. Tap the Feurstagram icon at the top of your profile, next to the menu to open Feurstagram settings (long-pressing the Home tab works too).
 7. Report issues on GitHub if something does not work.
 
 ## Troubleshooting

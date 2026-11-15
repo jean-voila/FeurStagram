@@ -31,10 +31,15 @@ internal object ReelParserFingerprint : Fingerprint(
     strings = listOf("seen_ranked_position", "latest_reel_media", "media_count"),
 )
 
-/** The model's serializer: a static map builder reading each field through the interface. */
+/**
+ * The model's serializer: a static map builder reading each field through the interface.
+ * Since 456 most of its field names are loaded from Instagram's shared string tables
+ * (`static String A00(int)` switches) instead of literals, so only the one field read
+ * here, still a literal, anchors it; the shape does the rest.
+ */
 internal object ReelSerializerFingerprint : Fingerprint(
     returnType = "Ljava/util/Map;",
-    strings = listOf("media_count", "unseen_media_ids", "seen_ranked_position"),
+    strings = listOf("reel_type"),
     custom = { method, _ ->
         AccessFlags.STATIC.isSet(method.accessFlags) &&
             method.parameterTypes.any { it.toString() == REEL_INTF }

@@ -146,10 +146,10 @@ You have two options:
 
 ## What Gets Disabled
 
-All content blocks are **individual runtime toggles** — long-press the Home
-tab at the bottom-left of the main tab bar (or, if you hid Home, the first icon
-of the bar; Messages in Quoicouview mode; on tablets, the same icons in the side
-rail) to open the Feurstagram settings page and check/uncheck what you
+All content blocks are **individual runtime toggles** — tap the Feurstagram
+icon at the top of your profile, next to the menu (or long-press the Home tab,
+the first icon of the bar if you hid Home, Messages in Quoicouview mode; on
+tablets, the same icons in the side rail) to open the Feurstagram settings page and check/uncheck what you
 want blocked. A single APK covers every
 combination.
 
@@ -164,6 +164,7 @@ combination.
 | **Instants (+ button in DMs)** | Blocked | Yes | View visibility hidden |
 | **Notes (text bubbles above DMs)** | Blocked | Yes | Row removed from the inbox list |
 | **Ads** | Blocked | Yes | Response filtering + feed-parse filtering |
+| **Threads button (profile header)** | Hidden | Yes | View visibility hidden |
 | **Analytics & telemetry** | Native | No | Instagram requests preserved |
 | **Shopping / commerce preloads** | Native | No | Instagram requests preserved |
 
@@ -187,9 +188,11 @@ of just the accounts you follow, with the recommended/ranked posts dropped.
 
 ## Settings Page
 
-**Long-press the Home tab** (the house icon at the bottom-left of Instagram's
-main tab bar). If you hid the Home icon, long-press the first icon left on the
-bar instead. A full-screen, scrollable settings page opens — Material 3
+**Tap the Feurstagram icon** (the diamond at the top of your own profile, just
+left of the ☰ menu). A red dot on it means a new Feurstagram release is out; the
+settings then open on an "Update available" row. The former gesture still works:
+long-press the Home tab (or, if you hid the Home icon, the first icon left on
+the bar). A full-screen, scrollable settings page opens — Material 3
 Expressive, monochrome, and padded to fit around system bars and cutouts on any
 device. It starts on an overview: one row per section, with Instagram's own
 outline icon and a one-line summary of that section's current state (for
@@ -203,7 +206,8 @@ window, with a back arrow; Back returns to the overview. The sections are:
   right, as on Home. A card presents it once after the update, with a screenshot.
 
 - **Blocked surfaces** — toggles for Home Feed, Explore, Reels, Stories,
-  Suggested accounts, Ads, Instants, and Notes.
+  Suggested accounts, Ads, Instants, Notes, the notifications button and the
+  Threads button of the profile header.
 - **Navigation bar** — show or hide each bottom-bar icon (Home, Search, Reels,
   Create, Messages, Profile) independently of the content blocks, with a live
   preview of the bar above the toggles. A toggle for a tab your Instagram build
@@ -295,7 +299,7 @@ Feurstagram/
 ├── patches/                      # Patches (Kotlin): where to inject, by fingerprint
 │   └── src/main/kotlin/com/feurstagram/patches/
 │       ├── network/              # Response filtering + feed-item filter + following-feed
-│       ├── settings/             # Long-press settings entry point (tab bar) + Back history
+│       ├── settings/             # Settings entry points (tab bar) + Back history
 │       ├── quoicouview/          # Stories tray as a row of the Direct inbox
 │       ├── signature/            # Signing-cert trust bypass (deep links)
 │       ├── display/              # Force SDR (disable Instagram's forced HDR window)
@@ -349,9 +353,13 @@ logic lives in compiled extension classes that are merged into the app.
 
 ### Settings Hook
 A fingerprint matches the main tab-bar binder and injects a watcher on it. The
-watcher resolves the tab ids via `Resources.getIdentifier(...)`, grabs the
-Home tab (or the first visible tab when Home is hidden) once laid out, and
-installs a long-press listener. Long-pressing
+watcher adds a Feurstagram button to the header of the user's own profile (the
+one with the "Create" button on its left), just before the menu button, and puts
+it back on any layout pass where Instagram rebuilt the header; it carries the red
+update dot. It also resolves the
+tab ids via `Resources.getIdentifier(...)`, grabs the Home tab (or the first
+visible tab when Home is hidden) once laid out, and installs a long-press
+listener. Either one
 opens a full-screen Material dark page: content toggles plus a landing-page
 selector, all backed by `SharedPreferences` (`feurstagram_prefs`). The same
 hook installs the navigation-tab/Notes/Instants hiders, the hidden-tab swipe
@@ -449,6 +457,9 @@ Instagram's original colour mode through untouched. It hooks the framework
 Suggested accounts mixed into the story tray are not a separate request: they arrive as
 `reel_type: "suggested_user"` entries of the tray response itself. A parse-layer hook drops
 them when *Suggested accounts* is blocked, the same way feed ads are filtered.
+`/discover/surface_with_su/` is deliberately left alone: the same response carries a
+profile's mutual followers, and the "Mutual" tab of its follower lists never loads once
+the suggestions in it are emptied.
 
 #### Content response paths (requests remain enabled)
 
@@ -458,7 +469,7 @@ them when *Suggested accounts* is blocked, the same way feed ads are filtered.
 | `/feed/reels_tray` | Stories tray | Yes |
 | `/discover/topical_explore` | Explore tab content | Yes |
 | `/clips/home/`, `/clips/discover`, `/clips/get_blend_medias/` | Reels feed + discovery + Blend reels | Yes |
-| `/discover/ayml/`, `/discover/sectioned_ayml/`, `/discover/chaining/`, `/discover/recommended_accounts_for_category/`, `/discover/suggested_businesses/`, `/discover/recs_from_friends_suggestions/`, `/discover/recs_from_friends_user_info/`, `/discover/surface_with_su/`, `/discover/fetch_suggestion_details/`, `/discover/account_discovery/`, `/discover/reshare_suggestions/`, `/fbsearch/accounts_recs/`, `/friendships/feed_favorites_suggestions/`, `/friendships/share_to_friends_story_suggested_users/`, `/direct_v2/search_friending_suggestions/`, `/business/discovery/suggest_business/` | Suggested-account recommendations (profile "Suggested for you", stories-tray injected accounts, search null-state recs, post-follow chaining, friend/business suggestions) | Yes |
+| `/discover/ayml/`, `/discover/sectioned_ayml/`, `/discover/chaining/`, `/discover/recommended_accounts_for_category/`, `/discover/suggested_businesses/`, `/discover/recs_from_friends_suggestions/`, `/discover/recs_from_friends_user_info/`, `/discover/fetch_suggestion_details/`, `/discover/account_discovery/`, `/discover/reshare_suggestions/`, `/fbsearch/accounts_recs/`, `/friendships/feed_favorites_suggestions/`, `/friendships/share_to_friends_story_suggested_users/`, `/direct_v2/search_friending_suggestions/`, `/business/discovery/suggest_business/` | Suggested-account recommendations (profile "Suggested for you", stories-tray injected accounts, search null-state recs, post-follow chaining, friend/business suggestions) | Yes |
 | `/api/v1/ads/` (all `ads/*`), `/feed/async_ads_ranking/`, `/feed/shop_everything_feed_of_ads*`, `/feed/user_interests_contextual_feed_of_ads/`, `/discover/chaining_experience_contextual_ads/`, `/discover/chaining_experience_notification_ads/`, `/direct_v2/ads_for_ctd_ads_thread_view/`, `/direct_v2/should_show_ad_responses_tab/`, `/profile_ads/get_profile_ads/`, `/stories/stories_high_intent_discovery_ads/`, `/stories/stories_intent_aware_ads/`, `/commerce/product_collections/ads_collection_page/` | Sponsored ads injected into the feed, stories, profile, DMs, Explore chaining and commerce | Yes |
 Note: despite the name, `/feed/reels_tray` is the stories tray endpoint in Instagram internals.
 

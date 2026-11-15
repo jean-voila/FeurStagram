@@ -151,6 +151,9 @@ public final class Config {
      */
     public static boolean isNotificationsButtonBlocked() { return getBlocked("block_notifications", false); }
 
+    /** Whether the Threads button in the profile header is hidden. On by default. */
+    public static boolean isThreadsButtonBlocked() { return getBlocked("block_threads", true); }
+
     /**
      * Whether Instagram's popups (its own toasts: "Couldn't refresh feed",
      * "Impossible d'actualiser le fil", ...) are dropped. On by default: blocking
@@ -353,9 +356,38 @@ public final class Config {
     }
 
     /**
+     * Tag of the newest release the last update check found ahead of the running
+     * version ("v456-0-0-24-78"), or null when the check found nothing newer. Drives
+     * the red dot on the settings tab between launches.
+     */
+    public static String getLatestKnownRelease() {
+        SharedPreferences prefs = prefs();
+        return prefs == null ? null : prefs.getString("latest_known_release", null);
+    }
+
+    public static void setLatestKnownRelease(String tag) {
+        SharedPreferences prefs = prefs();
+        if (prefs == null) return;
+        if (tag == null) prefs.edit().remove("latest_known_release").apply();
+        else prefs.edit().putString("latest_known_release", tag).apply();
+    }
+
+    /** Local day (yyyyddd) the "Update available" page was last shown, or 0. */
+    public static int getUpdatePromptDay() {
+        SharedPreferences prefs = prefs();
+        return prefs == null ? 0 : prefs.getInt("update_prompt_day", 0);
+    }
+
+    public static void setUpdatePromptDay(int day) {
+        SharedPreferences prefs = prefs();
+        if (prefs == null) return;
+        prefs.edit().putInt("update_prompt_day", day).apply();
+    }
+
+    /**
      * The package {@code lastUpdateTime} the "follow the official account" card was
-     * last shown for, or 0 if never. A different value on launch means the app was
-     * installed or updated since, so the card is due again.
+     * last shown for, or 0 if never. Kept so a fresh install that dies before the
+     * card was dismissed does not ask twice for the same install.
      */
     public static long getFollowPromptShownFor() {
         SharedPreferences prefs = prefs();

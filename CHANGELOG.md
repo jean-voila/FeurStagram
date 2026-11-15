@@ -6,6 +6,50 @@ All notable changes to Feurstagram should be documented in this file.
 
 Nothing yet.
 
+## v456-0-0-24-78
+
+### Added
+
+- **Settings button in the profile header.** A Feurstagram icon (the diamond mark, drawn in code
+  as a 24-unit line icon) sits in the header of the signed-in user's own profile, just before the
+  ☰ menu, and opens the settings on a tap. `ProfileSettingsButton` keeps it there with a window
+  layout listener that re-adds it when Instagram rebuilds the header. The own profile is told from
+  anyone else's by `profile_header_create_button`; the button is recognised by class (never by
+  tag), takes the menu button's measured size (a plain `View` asked to wrap its content takes all
+  the room) and its tint (`imageTintList`). An icon at the end of the bottom bar was tried first
+  and judged too intrusive (community poll). The long-press on the first tab is unchanged.
+- **Update dot.** The latest release found newer than the running one is stored
+  (`latest_known_release`) and drawn as a red dot on that button, across launches and without a
+  network call. The settings overview then starts with an "Update available" row that opens the
+  update page. The dot clears itself once that release is installed.
+- **Threads button hidden** (`block_threads`, on by default, under Blocked surfaces): the button of
+  the profile header's right-hand group whose accessibility label names Threads (a brand name,
+  left untranslated) is set `GONE`, and shown again when the toggle is turned off.
+
+### Changed
+
+- **"Update available" at most once a day.** The automatic check still runs at every launch
+  (it feeds the dot), but the full-screen page only comes up once per local calendar day
+  (`update_prompt_day`). Manual checks are never throttled.
+- **Official-account card on fresh installs only.** It is now shown only when
+  `firstInstallTime == lastUpdateTime` (a package that was never updated), instead of after
+  every update for anyone who never pressed Follow in the card itself.
+- Updated to Instagram 456.0.0.24.78. Instagram 456 moves many string literals into shared
+  `static String A00(int)` switch tables: the story-tray serializer is now found by its
+  `reel_type` literal plus shape; the Notes tray patch accepts the inbox-mode read compiled
+  through a static `(Lazy)Z` helper; the story-tray launch parameters gained a tenth argument.
+
+### Fixed
+
+- **Mutual followers.** `/discover/surface_with_su/` is no longer filtered by *Suggested
+  accounts*: the response carries both a profile's mutual followers and suggestions, and on an
+  empty suggestion list Instagram's "Mutual" tab skips loading its rows, so it stayed on
+  placeholders. The suggestions of that follower-list screen ("For you") are now shown.
+- **Swiping onto a hidden tab.** On Instagram 456 the tab bar is replaced by a new instance
+  after the first layout, and the new tab is marked selected after the pager's last scroll
+  callback, so a swipe could land on the hidden Reels page. The skipper now reads the live bar
+  on every check and checks once more when scrolling has gone quiet.
+
 ## v455-0-0-51-72-1
 
 ### Fixed

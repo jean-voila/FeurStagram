@@ -104,16 +104,18 @@ public final class Settings {
     private Settings() {}
 
     /**
-     * Install the Feurstagram entry points off the bottom tab bar: the long-press
-     * settings gesture, the UI hiders, and the launch update check. The tab bar is
+     * Install the Feurstagram entry points off the bottom tab bar: the settings
+     * button of the profile header, the long-press settings gesture, the UI
+     * hiders, and the launch update check. The tab bar is
      * just a stable handle into the window's view tree.
      */
     public static void installHomeTabWatcher(ViewGroup tabBar) {
         if (tabBar == null) return;
         tabBar.getViewTreeObserver().addOnGlobalLayoutListener(new HomeTabWatcher(tabBar));
+        ProfileSettingsButton.install(tabBar);
         Hiders.installAll(tabBar);
         Context activity = getActivityContext(tabBar);
-        // The follow card comes first after an install or update, then the card
+        // The follow card comes first after a fresh install, then the card
         // presenting Quoicouview mode; "What's new" waits until both are dismissed.
         FollowPrompt.maybeShow(activity, () ->
                 QuoicouviewIntro.maybeShow(activity, () -> UpdateChecker.checkWhatsNew(activity)));
@@ -606,9 +608,20 @@ public final class Settings {
     private static final String[] SURFACE_KEYS = {
             "block_feed", "block_explore", "block_reels", "block_friends_lane", "block_stories",
             "block_instants", "block_notes", "block_suggested", "block_ads", "block_notifications",
+            "block_threads",
     };
 
     private static void buildOverview(Context context, LinearLayout column, Pages pages) {
+        // What the red dot on the settings button is about, first thing on the page.
+        String pending = UpdateChecker.pendingVersion();
+        if (pending != null) {
+            LinearLayout update = addSection(context, column, "Update");
+            addSectionRow(context, update, "download", "Update available",
+                    "FeurStagram " + pending + " is out",
+                    () -> UpdateChecker.openPendingUpdate(context));
+            sealGroup(context, update);
+        }
+
         LinearLayout experimental = addSection(context, column, "Experimental feature");
         addRow(context, experimental, "Quoicouview mode", "quoicouview_mode", Config.isQuoicouviewEnabled());
         if (!Config.isQuoicouviewAvailable()) greyOut(experimental.getChildAt(experimental.getChildCount() - 1));
@@ -657,6 +670,7 @@ public final class Settings {
             case "block_suggested": return Config.isSuggestedBlocked();
             case "block_ads": return Config.isAdsBlocked();
             case "block_notifications": return Config.isNotificationsButtonBlocked();
+            case "block_threads": return Config.isThreadsButtonBlocked();
             default: return Config.getBlocked(key, false);
         }
     }
@@ -673,6 +687,7 @@ public final class Settings {
             case "block_suggested": return "Suggested accounts";
             case "block_ads": return "Ads";
             case "block_notifications": return "Notifications button";
+            case "block_threads": return "Threads button";
             default: return key;
         }
     }
@@ -1272,11 +1287,12 @@ public final class Settings {
         if (key.equals("force_sdr")) return "Keep blacks deep by stopping Instagram forcing HDR on the UI.";
         if (key.equals("block_friends_lane")) return "Hide the Friends tab and its avatars in the Reels header.";
         if (key.equals("block_notifications")) return "Hide the notifications (heart) button in the feed header.";
+        if (key.equals("block_threads")) return "Hide the Threads button at the top of your profile.";
         if (key.equals("quoicouview_mode")) {
             return "Messages become the main page, with stories on top. Home is turned off.";
         }
         if (key.equals("nav_show_home")) {
-            return "Show this icon in the navigation bar. When hidden, long-press the first icon to open these settings.";
+            return "Show this icon in the navigation bar. These settings open from the Feurstagram icon at the top of your profile, or by long-pressing the first icon.";
         }
         if (key.startsWith("nav_show_")) return "Show this icon in the navigation bar.";
         return "Hide this surface in Instagram.";

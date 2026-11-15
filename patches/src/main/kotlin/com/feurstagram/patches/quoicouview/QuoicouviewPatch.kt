@@ -509,7 +509,8 @@ val quoicouviewPatch = bytecodePatch(
             step.instructions.singleOrNull {
                 it.opcode == Opcode.INVOKE_DIRECT_RANGE && methodRef((it as ReferenceInstruction).reference)?.let { ref ->
                     ref.name == "<init>" && ref.parameterTypes.map { p -> p.toString() }.let { params ->
-                        params.size == 9 && params[1] == "Ljava/lang/Class;" &&
+                        // 9 parameters up to 455, 10 since 456 (one more trailing flag).
+                        params.size in 9..10 && params[1] == "Ljava/lang/Class;" &&
                             params.last() == "Z" && params.takeLastWhile { p -> p == "Z" }.size >= 4
                     }
                 } == true

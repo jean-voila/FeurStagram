@@ -19,13 +19,15 @@ import android.widget.TextView;
 
 /**
  * A card inviting the user to follow the official Feurstagram Instagram account,
- * shown once on the first launch after every install or update until Follow is clicked — before the
- * "What's new" card, which only runs once this one is out of the way.
+ * shown once, on the first launch of a fresh install — before the "What's new"
+ * card, which only runs once this one is out of the way.
  *
- * "After an install or update" is read from the package's {@code lastUpdateTime}
- * rather than its versionName: a Feurstagram re-release on the same Instagram base
- * (a {@code -1} tag) keeps the versionName but is still an update, and a fresh
- * install has no stored time at all.
+ * Updates never show it: people who already follow the account were asked again
+ * after every release. Android keeps a package's {@code firstInstallTime} across
+ * updates and sets {@code lastUpdateTime} to the same instant only on the very
+ * first install, so the two being equal is what "fresh install" means here.
+ * {@code lastUpdateTime} is also stored once shown, so a launch that dies before the
+ * card is dismissed does not ask twice for the same install.
  *
  * The follow button opens the profile inside this very app (the signature-check
  * bypass makes Instagram accept its own deep links), falling back to any handler
@@ -55,7 +57,7 @@ public final class FollowPrompt {
         if (context == null || checked) return;
         checked = true;
         final long updateTime = lastUpdateTime(context);
-        if (Config.hasFollowedOfficialAccount()
+        if (Config.hasFollowedOfficialAccount() || !isFreshInstall(context)
                 || updateTime == 0L || updateTime == Config.getFollowPromptShownFor()) {
             then.run();
             return;
@@ -63,6 +65,17 @@ public final class FollowPrompt {
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             if (!show(context, updateTime, then)) then.run();
         }, SHOW_DELAY_MS);
+    }
+
+    /** Installed, never updated: Android stamps both times alike only on a first install. */
+    private static boolean isFreshInstall(Context context) {
+        try {
+            PackageManager pm = context.getPackageManager();
+            android.content.pm.PackageInfo info = pm.getPackageInfo(context.getPackageName(), 0);
+            return info.firstInstallTime == info.lastUpdateTime;
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     private static long lastUpdateTime(Context context) {

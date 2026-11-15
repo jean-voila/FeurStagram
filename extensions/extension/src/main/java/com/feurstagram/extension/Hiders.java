@@ -39,6 +39,8 @@ public final class Hiders {
         // On large screens that button is a tab of the side rail.
         observer.addOnGlobalLayoutListener(new VisibilityHider(root, "block_notifications",
                 false, false, "ls_nav_bar", "news_tab"));
+        // Threads button in the profile header.
+        observer.addOnGlobalLayoutListener(new ThreadsButtonHider(root));
         // Bottom-navigation icons, each shown/hidden independently. These use the
         // inverted "nav_show_<tab>" preference (true = shown). Home has its own
         // hider: it carries the settings gesture, so it may only go when another
@@ -245,6 +247,51 @@ public final class Hiders {
             if (key != null && !"feed_tab".equals(name) && Config.isNavTabShown(key)) return tab;
         }
         return home;
+    }
+
+    /**
+     * Hides the Threads button of the profile header. It has no id of its own, so
+     * it is the button of the header's right-hand group whose accessibility label
+     * names Threads (a brand name, left untranslated: "Voir le profil sur
+     * Threads", "View profile on Threads"). Only views hidden here are shown again.
+     */
+    static final class ThreadsButtonHider implements ViewTreeObserver.OnGlobalLayoutListener {
+        private final ViewGroup root;
+        private final java.util.Set<View> hidden =
+                java.util.Collections.newSetFromMap(new java.util.WeakHashMap<View, Boolean>());
+
+        ThreadsButtonHider(ViewGroup root) {
+            this.root = root;
+        }
+
+        @Override
+        public void onGlobalLayout() {
+            try {
+                boolean block = Config.isThreadsButtonBlocked();
+                if (!block) {
+                    for (View view : hidden) view.setVisibility(View.VISIBLE);
+                    hidden.clear();
+                    return;
+                }
+                Context context = root.getContext();
+                int groupId = resolveId(context, "right_action_bar_buttons");
+                View window = root.getRootView();
+                View group = groupId == 0 || window == null ? null : window.findViewById(groupId);
+                if (!(group instanceof ViewGroup)) return;
+                ViewGroup buttons = (ViewGroup) group;
+                for (int i = 0; i < buttons.getChildCount(); i++) {
+                    View button = buttons.getChildAt(i);
+                    CharSequence label = button.getContentDescription();
+                    if (label != null && label.toString().contains("Threads")
+                            && button.getVisibility() != View.GONE) {
+                        button.setVisibility(View.GONE);
+                        hidden.add(button);
+                    }
+                }
+            } catch (Throwable ignored) {
+                // Never let a hider take Instagram down.
+            }
+        }
     }
 
     /** Shows or hides the Home icon on every layout pass; see {@link #isHomeHidden}. */

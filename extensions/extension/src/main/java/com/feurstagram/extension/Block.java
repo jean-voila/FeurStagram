@@ -9,7 +9,12 @@ public final class Block {
 
     private Block() {}
 
-    /** Account/user recommendation surfaces ("Suggested for you", chaining, ...). */
+    /**
+     * Account/user recommendation surfaces ("Suggested for you", chaining, ...).
+     * {@code /discover/surface_with_su/} is deliberately absent: the same response
+     * carries a profile's mutual followers, and its "Mutual" tab never loads once
+     * the suggestions in it are emptied.
+     */
     private static final String[] SUGGESTED = {
             "/discover/ayml/",
             "/discover/sectioned_ayml/",
@@ -18,7 +23,6 @@ public final class Block {
             "/discover/suggested_businesses/",
             "/discover/recs_from_friends_suggestions/",
             "/discover/recs_from_friends_user_info/",
-            "/discover/surface_with_su/",
             "/discover/fetch_suggestion_details/",
             "/discover/account_discovery/",
             "/discover/reshare_suggestions/",

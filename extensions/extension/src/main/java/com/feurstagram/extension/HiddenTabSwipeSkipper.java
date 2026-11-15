@@ -57,6 +57,9 @@ public final class HiddenTabSwipeSkipper {
     /** How long to wait between checks that the pager has come to rest. */
     private static final long SETTLE_POLL_MS = 40;
 
+    /** Delay after the last scroll callback before the selected tab is read again. */
+    private static final long QUIET_RECHECK_MS = 120;
+
     /** Give up waiting for rest after this many polls (~1s). */
     private static final int MAX_SETTLE_POLLS = 25;
 
@@ -158,12 +161,35 @@ public final class HiddenTabSwipeSkipper {
             this.setCurrentItem = setCurrentItem;
         }
 
+        /**
+         * Since Instagram 456 the bar marks the new tab only after the pager's last
+         * scroll callback, so a swipe onto a hidden page fires no event that sees
+         * it. The same check runs once more when the scrolling has gone quiet.
+         */
+        private final Runnable recheck = this::evaluate;
+
+        /**
+         * The bar on screen now. Instagram 456 swaps the tab bar for a new instance
+         * after the first one is laid out, so the one seen at install time can be
+         * stale: it would never mark the live tab.
+         */
+        private ViewGroup bar() {
+            ViewGroup live = Hiders.tabBar(pager);
+            return live != null && live.getChildCount() > 0 ? live : tabBar;
+        }
+
         @Override
         public void onScrollChanged() {
+            pager.removeCallbacks(recheck);
+            pager.postDelayed(recheck, QUIET_RECHECK_MS);
+            evaluate();
+        }
+
+        private void evaluate() {
             int current = selectedIndex();
             if (current < 0) return; // no tab marked live: nothing to reason about
 
-            if (isReachable(tabBar.getChildAt(current))) {
+            if (isReachable(bar().getChildAt(current))) {
                 // On a tab that is really on the bar: remember it and stand down.
                 previous = current;
                 jumping = false;
@@ -241,7 +267,7 @@ public final class HiddenTabSwipeSkipper {
                         return;
                     }
                     if (selectedIndex() == target) return; // got there on its own
-                    View destination = tabBar.getChildAt(target);
+                    View destination = bar().getChildAt(target);
                     if (destination == null) {
                         jumping = false;
                         return;
@@ -253,16 +279,16 @@ public final class HiddenTabSwipeSkipper {
 
         /** Index of the tab the bar marks as live, or -1. */
         private int selectedIndex() {
-            for (int i = 0; i < tabBar.getChildCount(); i++) {
-                if (tabBar.getChildAt(i).isSelected()) return i;
+            for (int i = 0; i < bar().getChildCount(); i++) {
+                if (bar().getChildAt(i).isSelected()) return i;
             }
             return -1;
         }
 
         /** Index of the first reachable tab from {@code from} walking in {@code direction}. */
         private int nearestReachable(int from, int direction) {
-            for (int i = from + direction; i >= 0 && i < tabBar.getChildCount(); i += direction) {
-                if (isReachable(tabBar.getChildAt(i))) return i;
+            for (int i = from + direction; i >= 0 && i < bar().getChildCount(); i += direction) {
+                if (isReachable(bar().getChildAt(i))) return i;
             }
             return -1;
         }

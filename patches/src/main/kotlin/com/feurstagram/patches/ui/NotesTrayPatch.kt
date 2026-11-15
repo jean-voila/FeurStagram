@@ -79,11 +79,17 @@ val notesTrayPatch = bytecodePatch(
                 }
                 loads.reversed().forEach { load ->
                     val at = load.location.index
-                    val unbox = method.instructions.getOrNull(at + 4)
-                    val result = method.instructions.getOrNull(at + 5)
-                    if (methodRef((unbox as? ReferenceInstruction)?.reference)?.let {
-                            it.definingClass == "Ljava/lang/Boolean;" && it.name == "booleanValue"
-                        } != true || result?.opcode != Opcode.MOVE_RESULT
+                    // Either inline (getValue, check-cast, booleanValue) or, since 456,
+                    // through a shared static helper taking the lazy and returning Z.
+                    val helper = method.instructions.getOrNull(at + 1)
+                    val inlined = methodRef((method.instructions.getOrNull(at + 4) as? ReferenceInstruction)?.reference)
+                        ?.let { it.definingClass == "Ljava/lang/Boolean;" && it.name == "booleanValue" } == true
+                    val viaHelper = helper?.opcode == Opcode.INVOKE_STATIC &&
+                        methodRef((helper as ReferenceInstruction).reference)?.let {
+                            it.returnType == "Z" && it.parameterTypes.map(CharSequence::toString) == listOf(modeField.type)
+                        } == true
+                    val result = method.instructions.getOrNull(if (viaHelper) at + 2 else at + 5)
+                    if (!(inlined || viaHelper) || result?.opcode != Opcode.MOVE_RESULT
                     ) throw PatchException("Unsupported inbox mode read in ${method.name}")
                     val register = (result as OneRegisterInstruction).registerA
                     method.addInstructions(
