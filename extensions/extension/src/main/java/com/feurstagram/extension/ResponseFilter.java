@@ -24,8 +24,11 @@ public final class ResponseFilter {
         URI uri = requestUri(request);
         int status = responseStatus(response);
         boolean hide = status >= 200 && status < 300 && Block.hidesResponse(uri);
-        if (hide || DebugBridge.isNetworkTraceEnabled()) {
-            RESPONSES.put(dispatcher, new State(uri, status, hide));
+        boolean capture = DebugBridge.shouldCapture(uri == null ? null : uri.getPath());
+        if (hide || capture || DebugBridge.isNetworkTraceEnabled()) {
+            State state = new State(uri, status, hide);
+            if (capture) state.capture = new java.io.ByteArrayOutputStream();
+            RESPONSES.put(dispatcher, state);
         } else {
             RESPONSES.remove(dispatcher);
         }
@@ -35,6 +38,10 @@ public final class ResponseFilter {
         State state = RESPONSES.get(dispatcher);
         if (state == null || body == null) return body;
         state.received += body.remaining();
+        if (state.capture != null) {
+            ByteBuffer copy = body.duplicate();
+            while (copy.hasRemaining()) state.capture.write(copy.get());
+        }
         ByteBuffer delivered = state.filter == null ? body : state.filter.filter(body);
         state.delivered += delivered.remaining();
         return delivered;
@@ -45,6 +52,7 @@ public final class ResponseFilter {
 
     private static void finish(Object dispatcher, String event) {
         State state = RESPONSES.remove(dispatcher);
+        if (state != null && state.capture != null) DebugBridge.saveCapture(state.path, state.capture.toByteArray());
         if (state != null && "complete".equals(event)) {
             DebugBridge.recordResponse(state.path, state.status, state.received, state.delivered,
                     state.filter == null ? 0 : state.filter.removed);
@@ -62,6 +70,7 @@ public final class ResponseFilter {
         final int status;
         final JsonContentFilter filter;
         long received, delivered;
+        java.io.ByteArrayOutputStream capture;
         State(URI uri, int status, boolean hide) {
             path = uri == null ? "" : uri.getPath();
             this.status = status;

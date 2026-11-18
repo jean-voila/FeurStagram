@@ -156,14 +156,18 @@ final class JsonContentFilter {
             case "sectional_items": case "users": case "suggested_users":
             case "suggestions": case "suggested_accounts": case "ranked_items":
             case "results": case "ads": case "ad_items": case "edges":
-            case "blend_items": return true;
+            case "blend_items":
+            // /api/v1/ads/async_ads/: the ads Instagram injects client-side
+            // between Reels and Stories, and the promoted units sent with them.
+            case "ad_media_items": case "netego_media_items": return true;
             default: return false;
         }
     }
 
     private static boolean paginationField(String name) {
         return "more_available".equals(name) || "has_more".equals(name)
-                || "has_next_page".equals(name) || "is_more_available".equals(name);
+                || "has_next_page".equals(name) || "is_more_available".equals(name)
+                || "more_available_ad_media".equals(name);
     }
 
     private boolean paginationScope() {

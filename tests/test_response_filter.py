@@ -13,8 +13,8 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTENT = set("feed_items items items_with_ads tray reels reels_media medias media sections sectional_items users "
-              "suggested_users suggestions suggested_accounts ranked_items results ads ad_items edges blend_items".split())
-PAGING = set("more_available has_more has_next_page is_more_available".split())
+              "suggested_users suggestions suggested_accounts ranked_items results ads ad_items edges blend_items ad_media_items netego_media_items".split())
+PAGING = set("more_available has_more has_next_page is_more_available more_available_ad_media".split())
 
 HARNESS = r'''
 package com.feurstagram.extension;
@@ -124,7 +124,9 @@ class ResponseFilterTests(unittest.TestCase):
                       ("Feed", "Stories", "Explore", "Reels", "Suggested", "Ads")) + "}")
         (cls.build / "DebugBridge.java").write_text("package com.feurstagram.extension; class DebugBridge {"
             "static boolean isNetworkTraceEnabled() { return false; }"
-            "static void recordResponse(String p,int s,long r,long d,int n) { }}")
+            "static void recordResponse(String p,int s,long r,long d,int n) { }"
+            "static boolean shouldCapture(String p) { return false; }"
+            "static void saveCapture(String p,byte[] b) { }}")
         (cls.build / "Log.java").write_text("package android.util; public class Log {"
             "public static int i(String tag,String text) { return 0; }}")
         home = Path(os.environ.get("JAVA_HOME", "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home"))

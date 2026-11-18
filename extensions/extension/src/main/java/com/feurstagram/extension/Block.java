@@ -68,6 +68,9 @@ public final class Block {
     /** Ad-delivery surfaces injected into feed, stories, profile, DMs, explore, commerce. */
     private static final String[] ADS = {
             "/api/v1/ads/",
+            // Story ads, injected between the stories of the people you follow. No
+            // trailing slash: the family has a "_www" sibling.
+            "/feed/injected_reels_media",
             "/feed/async_ads_ranking/",
             "/feed/contextual_multi_ads/",
             "/feed/shop_everything_feed_of_ads",
@@ -90,6 +93,7 @@ public final class Block {
         }
     }
 
+
     /** Only content delivery is filtered; logging, seen, uploads and security are untouched. */
     static boolean hidesResponse(URI uri) {
         if (uri == null || uri.getHost() == null || uri.getPath() == null) return false;
@@ -100,8 +104,7 @@ public final class Block {
                 || (Config.isStoriesBlocked() && path.contains("/feed/reels_tray"))
                 || (Config.isExploreBlocked() && path.contains("/discover/topical_explore"))
                 || (Config.isReelsBlocked() && (path.contains("/clips/home/")
-                    || path.contains("/clips/discover") || path.contains("/clips/get_blend_medias/")
-                    || path.contains("/feed/injected_reels_media")))
+                    || path.contains("/clips/discover") || path.contains("/clips/get_blend_medias/")))
                 || (Config.isSuggestedBlocked() && containsAny(path, SUGGESTED))
                 || (Config.isAdsBlocked() && containsAny(path, ADS));
     }

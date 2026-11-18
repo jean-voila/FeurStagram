@@ -62,7 +62,7 @@ public final class DebugBridge {
 
     private static final String[] ACTIONS = {
             "SET", "GET", "REMOVE", "DUMP", "NAV", "TRACE", "UPDATE", "WHATSNEW", "RESET", "RESTART", "SETTINGS", "PING",
-            "TREE", "INTRO", "CLICK", "TOUCH", "FIELDS", "NETSTATS",
+            "TREE", "INTRO", "CLICK", "TOUCH", "FIELDS", "NETSTATS", "CAPTURE",
     };
 
     private static boolean sInstalled;
@@ -104,6 +104,37 @@ public final class DebugBridge {
             if (reset) NETWORK_STATS.clear();
         }
         return out.toString();
+    }
+
+    /**
+     * Path fragment whose next responses are saved, as received, under the app's
+     * cache dir ({@code feur-capture-N.json}); null when off. Debug builds only.
+     */
+    private static volatile String sCapture;
+    private static volatile int sCaptureLeft;
+
+    /** Whether the response to {@code path} should be saved; counts it down. */
+    static synchronized boolean shouldCapture(String path) {
+        String wanted = sCapture;
+        if (wanted == null || path == null || !path.contains(wanted) || sCaptureLeft <= 0) return false;
+        if (--sCaptureLeft == 0) sCapture = null;
+        return true;
+    }
+
+    private static int sCaptureIndex;
+
+    static void saveCapture(String path, byte[] body) {
+        try {
+            Context context = Config.getAppContext();
+            if (context == null) return;
+            java.io.File out = new java.io.File(context.getCacheDir(), "feur-capture-" + (sCaptureIndex++) + ".json");
+            java.io.FileOutputStream stream = new java.io.FileOutputStream(out);
+            stream.write(body);
+            stream.close();
+            Log.i(TAG, "captured " + path + " -> " + out.getName() + " (" + body.length + " bytes)");
+        } catch (Throwable t) {
+            Log.w(TAG, "capture failed", t);
+        }
     }
 
     /** @see #sNetworkTrace */
@@ -214,6 +245,10 @@ public final class DebugBridge {
             case "TRACE":
                 sNetworkTrace = intent.getBooleanExtra("value", !sNetworkTrace);
                 return "network trace " + (sNetworkTrace ? "on (logcat -s FeurNet:I)" : "off");
+            case "CAPTURE":
+                sCapture = intent.getStringExtra("path");
+                sCaptureLeft = intent.getIntExtra("count", 1);
+                return sCapture == null ? "capture off" : "capturing next " + sCaptureLeft + " " + sCapture;
             case "RESET":
                 return reset();
             case "RESTART":
