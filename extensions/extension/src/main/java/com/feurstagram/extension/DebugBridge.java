@@ -219,7 +219,7 @@ public final class DebugBridge {
             case "RESTART":
                 return restart(context);
             case "SETTINGS":
-                return settings();
+                return settings(intent);
             default:
                 return "unknown command " + command;
         }
@@ -714,14 +714,21 @@ public final class DebugBridge {
         return "showing latest release notes";
     }
 
-    private static String settings() {
+    /**
+     * Open the settings as the long-press does. {@code --ez detached true} opens
+     * them from a view built on the application context and never attached, as
+     * Instagram's pre-inflated layouts are: the owner must still be found.
+     */
+    private static String settings(Intent intent) {
         ViewGroup tabBar = sTabBar.get();
         if (tabBar == null) return "ERROR no tab bar (open the app first)";
+        boolean detached = intent.getBooleanExtra("detached", false);
         tabBar.post(() -> {
-            Context activity = Settings.getActivityContext(tabBar);
+            View from = detached ? new View(Config.getAppContext()) : tabBar;
+            Context activity = Settings.getActivityContext(from);
             if (activity != null) Settings.show(activity);
         });
-        return "opening settings";
+        return "opening settings" + (detached ? " from a detached view" : "");
     }
 
     private static SharedPreferences prefs() {

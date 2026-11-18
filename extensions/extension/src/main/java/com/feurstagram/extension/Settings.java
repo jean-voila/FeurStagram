@@ -34,6 +34,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -111,6 +112,7 @@ public final class Settings {
      */
     public static void installHomeTabWatcher(ViewGroup tabBar) {
         if (tabBar == null) return;
+        Activities.track(tabBar.getContext());
         tabBar.getViewTreeObserver().addOnGlobalLayoutListener(new HomeTabWatcher(tabBar));
         ProfileSettingsButton.install(tabBar);
         Hiders.installAll(tabBar);
@@ -122,15 +124,15 @@ public final class Settings {
         UpdateChecker.check(activity);
     }
 
-    /** Unwrap a view's context down to the hosting Activity when possible. */
+    /**
+     * The live Activity hosting {@code view}, found by window token when the view's
+     * own context is not it (pre-inflated layouts, a view kept across an Activity
+     * re-creation). Falls back to the view's context when no Activity is alive.
+     */
     public static Context getActivityContext(View view) {
         if (view == null) return null;
-        Context context = view.getContext();
-        Context cursor = context;
-        while (cursor != null && !(cursor instanceof Activity) && cursor instanceof ContextWrapper) {
-            cursor = ((ContextWrapper) cursor).getBaseContext();
-        }
-        return cursor != null ? cursor : context;
+        Activity activity = Activities.forView(view);
+        return activity != null ? activity : view.getContext();
     }
 
     /** How far the settings page rises while it opens. */
@@ -138,12 +140,49 @@ public final class Settings {
     /** Length of the settings page's opening animation. */
     private static final long OPEN_DURATION_MS = 280L;
 
+    /** The settings window currently up, so a second tap does not stack another. */
+    private static WeakReference<SettingsDialog> openDialog = new WeakReference<>(null);
+    /** Set while an opening waits for its Activity's window. */
+    private static boolean opening;
+    /** How many frames an opening may wait for the Activity's window. */
+    private static final int OPEN_ATTEMPTS = 20;
+
     public static void show(Context context) {
-        if (context == null) return;
+        if (context == null || opening) return;
+        SettingsDialog current = openDialog.get();
+        if (current != null && current.isShowing()) return;
+        show(context, 0);
+    }
+
+    /**
+     * Open the settings over a live Activity. A dialog needs that Activity's
+     * window token, which is missing while the Activity is being (re)created, so
+     * the opening waits a few frames for it instead of failing.
+     */
+    private static void show(Context context, int attempt) {
+        Activity activity = Activities.forContext(context);
+        if (activity == null) {
+            opening = false;
+            unavailable(context, null);
+            return;
+        }
+        if (!Activities.hasWindow(activity)) {
+            if (attempt >= OPEN_ATTEMPTS) {
+                opening = false;
+                unavailable(activity, null);
+                return;
+            }
+            opening = true;
+            new android.os.Handler(android.os.Looper.getMainLooper())
+                    .postDelayed(() -> show(context, attempt + 1), 50L);
+            return;
+        }
+        opening = false;
+        SettingsDialog dialog = null;
         try {
-            SettingsDialog dialog = new SettingsDialog(context);
+            dialog = new SettingsDialog(activity);
             dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-            View content = buildContent(context, dialog);
+            View content = buildContent(activity, dialog);
             dialog.page = content;
             dialog.setContentView(content);
 
@@ -151,7 +190,7 @@ public final class Settings {
             // itself stays transparent (the page paints its own background), so what is
             // behind shows through until the page has settled.
             content.setAlpha(0f);
-            content.setTranslationY(dp(context, OPEN_RISE_DP));
+            content.setTranslationY(dp(activity, OPEN_RISE_DP));
             dialog.setOnShowListener(d -> content.animate()
                     .alpha(1f)
                     .translationY(0f)
@@ -162,14 +201,27 @@ public final class Settings {
             // Intercept Back (incl. predictive-back gesture) to restart on change.
             dialog.setOnCancelListener(d -> {
                 if (Config.isRestartPending()) {
-                    CacheCleaner.clearAndRestart(context);
+                    CacheCleaner.clearAndRestart(activity);
                 }
             });
 
             styleWindow(dialog, Color.TRANSPARENT, 0f);
             dialog.show();
+            openDialog = new WeakReference<>(dialog);
         } catch (Throwable t) {
-            Toast.makeText(context, "Feurstagram settings unavailable here", Toast.LENGTH_LONG).show();
+            if (dialog != null) {
+                try { dialog.dismiss(); } catch (Throwable ignored) { /* never shown */ }
+            }
+            unavailable(activity, t);
+        }
+    }
+
+    private static void unavailable(Context context, Throwable cause) {
+        android.util.Log.w("FeurStagram", "settings could not open", cause);
+        Context target = context != null ? context : Config.getAppContext();
+        if (target != null) {
+            Toast.makeText(target.getApplicationContext(), "Feurstagram settings unavailable here",
+                    Toast.LENGTH_LONG).show();
         }
     }
 
@@ -613,7 +665,12 @@ public final class Settings {
 
     private static void buildOverview(Context context, LinearLayout column, Pages pages) {
         // What the red dot on the settings button is about, first thing on the page.
-        String pending = UpdateChecker.pendingVersion();
+        String pending = null;
+        try {
+            pending = UpdateChecker.pendingVersion();
+        } catch (Throwable ignored) {
+            // no update row rather than no settings
+        }
         if (pending != null) {
             LinearLayout update = addSection(context, column, "Update");
             addSectionRow(context, update, "download", "Update available",
@@ -802,10 +859,14 @@ public final class Settings {
     /** The shown icons, in bar order, e.g. "Home, Messages, Search, Profile". */
     private static String navSummary(Context context) {
         StringBuilder out = new StringBuilder();
-        for (String tab : NavPreview.barOrder(context)) {
-            if (!NavPreview.isShown(tab)) continue;
-            if (out.length() > 0) out.append(", ");
-            out.append(NavPreview.label(tab));
+        try {
+            for (String tab : NavPreview.barOrder(context)) {
+                if (!NavPreview.isShown(tab)) continue;
+                if (out.length() > 0) out.append(", ");
+                out.append(NavPreview.label(tab));
+            }
+        } catch (Throwable ignored) {
+            // the live bar could not be read; the page still opens
         }
         return out.toString();
     }
