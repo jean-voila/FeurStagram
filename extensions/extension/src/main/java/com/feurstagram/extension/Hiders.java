@@ -219,6 +219,50 @@ public final class Hiders {
         return false;
     }
 
+    private static boolean commentHiderInstalled;
+
+    /**
+     * The story viewer's comment (bubble) button is bound by a component that
+     * keeps no flag of its own: while comments are blocked it is taken off the
+     * screen on every layout pass of any window that has one.
+     */
+    static void installCommentButtonHider() {
+        if (commentHiderInstalled || !Comments.hidden()) return;
+        commentHiderInstalled = true;
+        Windows.add(root -> root.getViewTreeObserver().addOnGlobalLayoutListener(() -> hideCommentButtons(root)));
+    }
+
+    private static int storyCommentButtonId = -1;
+    private static int commentComposerId = -1;
+
+    /**
+     * Comment controls with no flag of their own: the story viewer's comment
+     * (bubble) button, and the "Add a comment…" bar under a reel opened on its own
+     * (with its row, which only holds that bar and a camera shortcut).
+     */
+    private static void hideCommentButtons(View root) {
+        try {
+            if (storyCommentButtonId == -1) {
+                storyCommentButtonId = resolveId(root.getContext(), "reel_viewer_comments_button");
+                commentComposerId = resolveId(root.getContext(), "comment_composer_inner_layout");
+            }
+            hide(storyCommentButtonId == 0 ? null : root.findViewById(storyCommentButtonId));
+            View composer = commentComposerId == 0 ? null : root.findViewById(commentComposerId);
+            if (composer != null && composer.getParent() instanceof ViewGroup
+                    && ((ViewGroup) composer.getParent()).getChildCount() == 1) {
+                hide((View) composer.getParent());
+            } else {
+                hide(composer);
+            }
+        } catch (Throwable ignored) {
+            // the controls stay
+        }
+    }
+
+    private static void hide(View view) {
+        if (view != null && view.getVisibility() != View.GONE) view.setVisibility(View.GONE);
+    }
+
     /**
      * The tab whose long-press opens the settings: Home while it is on the bar,
      * otherwise Messages in Quoicouview mode and the first icon still shown out of

@@ -164,6 +164,7 @@ combination.
 | **Instants (+ button in DMs)** | Blocked | Yes | View visibility hidden |
 | **Notes (text bubbles above DMs)** | Blocked | Yes | Row removed from the inbox list |
 | **Ads** (feed, Reels, Stories) | Blocked | Yes | Response filtering + feed-parse filtering |
+| **Comments** (posts, Reels, stories) | Visible | Yes | UI state hooks + comment-list request cancelled |
 | **Threads button (profile header)** | Hidden | Yes | View visibility hidden |
 | **Analytics & telemetry** | Blocked | Yes (stays reversible under the permanent lock) | Upload requests cancelled |
 | **Shopping / commerce preloads** | Native | No | Instagram requests preserved |
@@ -206,8 +207,11 @@ window, with a back arrow; Back returns to the overview. The sections are:
   right, as on Home. A card presents it once after the update, with a screenshot.
 
 - **Blocked surfaces** — toggles for Home Feed, Explore, Reels, Stories,
-  Suggested accounts, Ads, Instants, Notes, the notifications button and the
-  Threads button of the profile header.
+  Suggested accounts, Ads, Comments, Instants, Notes, the notifications button and the
+  Threads button of the profile header. *Comments* (off by default) removes comment
+  buttons, counts, "View all comments" lines, the "Add a comment…" bar, the comment
+  previews over stories and the story viewer's comment button; a direct link to
+  comments opens the post without them.
 - **Navigation bar** — show or hide each bottom-bar icon (Home, Search, Reels,
   Create, Messages, Profile) independently of the content blocks, with a live
   preview of the bar above the toggles. A toggle for a tab your Instagram build

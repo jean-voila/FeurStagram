@@ -114,6 +114,7 @@ public final class Settings {
         if (tabBar == null) return;
         Activities.track(tabBar.getContext());
         Grayscale.install(tabBar.getContext());
+        Hiders.installCommentButtonHider();
         tabBar.getViewTreeObserver().addOnGlobalLayoutListener(new HomeTabWatcher(tabBar));
         ProfileSettingsButton.install(tabBar);
         Hiders.installAll(tabBar);
@@ -660,7 +661,8 @@ public final class Settings {
     /** Keys behind the "Blocked surfaces" page, in display order. */
     private static final String[] SURFACE_KEYS = {
             "block_feed", "block_explore", "block_reels", "block_friends_lane", "block_stories",
-            "block_instants", "block_notes", "block_suggested", "block_ads", "block_notifications",
+            "block_instants", "block_notes", "block_suggested", "block_ads", "block_comments",
+            "block_notifications",
             "block_threads",
     };
 
@@ -730,6 +732,7 @@ public final class Settings {
             case "block_notes": return Config.isNotesBlocked();
             case "block_suggested": return Config.isSuggestedBlocked();
             case "block_ads": return Config.isAdsBlocked();
+            case "block_comments": return Config.isCommentsBlocked();
             case "block_notifications": return Config.isNotificationsButtonBlocked();
             case "block_threads": return Config.isThreadsButtonBlocked();
             default: return Config.getBlocked(key, false);
@@ -747,6 +750,7 @@ public final class Settings {
             case "block_notes": return "Notes";
             case "block_suggested": return "Suggested accounts";
             case "block_ads": return "Ads";
+            case "block_comments": return "Comments";
             case "block_notifications": return "Notifications button";
             case "block_threads": return "Threads button";
             default: return key;
@@ -1369,6 +1373,7 @@ public final class Settings {
     private static String supportText(String key) {
         if (key.equals("auto_update")) return "Check GitHub for a new version on launch.";
         if (key.equals("block_ads")) return "Block sponsored ads across Instagram.";
+        if (key.equals("block_comments")) return "Hide comment buttons, counts and lists on posts, Reels and stories.";
         if (key.equals("ghost_dm_seen")) {
             return "People don't see when you read their messages. Chats you read stay unread here too.";
         }

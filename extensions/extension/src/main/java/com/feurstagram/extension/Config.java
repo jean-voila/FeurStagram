@@ -154,6 +154,8 @@ public final class Config {
     public static boolean isNotesBlocked()     { return getBlocked("block_notes", true); }
     public static boolean isSuggestedBlocked() { return getBlocked("block_suggested", true); }
     public static boolean isAdsBlocked()       { return getBlocked("block_ads", true); }
+    /** Comment buttons, counts and lists ({@link Comments}). Off by default. */
+    public static boolean isCommentsBlocked()  { return getBlocked("block_comments", false); }
 
     /**
      * Whether Instagram's analytics uploads are cancelled ({@link Block#onRequest}).
@@ -307,6 +309,7 @@ public final class Config {
         baseline.put("block_notes", isNotesBlocked());
         baseline.put("block_suggested", isSuggestedBlocked());
         baseline.put("block_ads", isAdsBlocked());
+        baseline.put("block_comments", isCommentsBlocked());
         baseline.put("limit_following_feed", isFollowingFeedOnly());
         for (String key : NAV_KEYS) {
             baseline.put(key, getBlocked(key, navDefault(key)));

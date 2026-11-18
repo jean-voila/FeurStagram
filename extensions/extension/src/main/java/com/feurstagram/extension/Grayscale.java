@@ -10,9 +10,6 @@ import android.os.Bundle;
 import android.view.View;
 import android.view.Window;
 
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Collection;
 
 /**
  * "Grayscale" (Display, off by default): Instagram, and only Instagram, drawn
@@ -23,7 +20,7 @@ import java.util.Collection;
  * a hardware layer whose paint carries a zero-saturation colour matrix, so the GPU
  * turns the whole window grey as it composes it: interface, photos, TextureView
  * videos, all in one pass. New windows are caught as the window manager records
- * them; activities are also caught as they are created.
+ * them ({@link Windows}); activities are also caught as they start.
  *
  * <h2>The one exception: SurfaceView</h2>
  * A SurfaceView's pixels never go through the window: the compositor puts them
@@ -67,7 +64,7 @@ public final class Grayscale {
                 Application app = activity.getApplication();
                 if (app != null) app.registerActivityLifecycleCallbacks(new Callbacks());
             }
-            followNewWindows();
+            Windows.add(Grayscale::apply);
         } catch (Throwable ignored) {
             // colour stays; nothing else depends on this
         }
@@ -94,41 +91,6 @@ public final class Grayscale {
             root.setLayerType(View.LAYER_TYPE_HARDWARE, paint());
         } catch (Throwable ignored) {
             // a window that refuses a layer keeps its colours
-        }
-    }
-
-    /**
-     * Windows other than activities (dialogs, bottom sheets, popups, the settings
-     * page) are recorded in WindowManagerGlobal's list of root views before they
-     * are attached; that list is swapped for one that filters each newcomer.
-     */
-    @SuppressWarnings("unchecked")
-    private static void followNewWindows() throws Exception {
-        Class<?> global = Class.forName("android.view.WindowManagerGlobal");
-        Object instance = global.getMethod("getInstance").invoke(null);
-        Field views = global.getDeclaredField("mViews");
-        views.setAccessible(true);
-        Field lock = global.getDeclaredField("mLock");
-        lock.setAccessible(true);
-        synchronized (lock.get(instance)) {
-            Object current = views.get(instance);
-            if (current instanceof RootViews) return;
-            RootViews replacement = new RootViews((Collection<View>) current);
-            for (View view : replacement) apply(view);
-            views.set(instance, replacement);
-        }
-    }
-
-    /** The window manager's list of root views, filtering each one as it is added. */
-    private static final class RootViews extends ArrayList<View> {
-        RootViews(Collection<View> existing) {
-            super(existing);
-        }
-
-        @Override
-        public boolean add(View view) {
-            if (isEnabled()) apply(view);
-            return super.add(view);
         }
     }
 
