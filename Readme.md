@@ -163,9 +163,9 @@ combination.
 | **Suggested accounts** | Blocked | Yes | Response filtering + feed-parse filtering |
 | **Instants (+ button in DMs)** | Blocked | Yes | View visibility hidden |
 | **Notes (text bubbles above DMs)** | Blocked | Yes | Row removed from the inbox list |
-| **Ads** | Blocked | Yes | Response filtering + feed-parse filtering |
+| **Ads** (feed, Reels, Stories) | Blocked | Yes | Response filtering + feed-parse filtering |
 | **Threads button (profile header)** | Hidden | Yes | View visibility hidden |
-| **Analytics & telemetry** | Native | No | Instagram requests preserved |
+| **Analytics & telemetry** | Blocked | Yes (stays reversible under the permanent lock) | Upload requests cancelled |
 | **Shopping / commerce preloads** | Native | No | Instagram requests preserved |
 
 **Following feed only** is a softer alternative to blocking the Home Feed
@@ -220,6 +220,9 @@ window, with a back arrow; Back returns to the overview. The sections are:
 - **Feed** — *Following feed only*: restrict the Home Feed to accounts you
   follow (chronological), instead of the recommended feed. Has effect only when
   the Home Feed is left unblocked.
+- **Privacy** — *Block telemetry* (on by default, after an update too): cancels
+  Instagram's usage-analytics uploads (see [Telemetry blocking](#telemetry-blocking)).
+  It is independent of the Ads block and stays reversible under the permanent lock.
 - **Display and popups** — *Force dark (disable HDR)* (on by default): stops Instagram
   forcing its window into HDR mode, which lifts the black floor and washes out
   the dark UI on HDR OLED screens. Turn it off to keep Instagram's HDR behaviour.
@@ -411,12 +414,22 @@ The filter handles UTF-8, nested objects, escaped strings and arbitrary transpor
 chunk boundaries without buffering a full response. Non-success HTTP responses pass
 through unchanged. Parse hooks also suppress home feed units and story-tray entries.
 
-Logging, seen events, uploads, statistics, security notices and commerce requests now
-follow Instagram's native behavior. Blocking content therefore no longer saves the
-API traffic associated with loading it, and **Instagram telemetry is no longer
-blocked**. Feurstagram adds no synthetic views, interactions, heartbeat requests or
-background polling. This change does not establish why an account was restricted,
-and does not guarantee protection from restrictions.
+### Telemetry blocking
+With **Block telemetry** on (the default, *Privacy* page of the settings), the
+requests that upload Instagram's usage analytics are cancelled as they start, the
+way a network failure would: the Pigeon/Falco event batches (`/pigeon_nest`,
+`/logging_client_events` on graph.instagram.com and graph.facebook.com), the
+experiment-exposure log (`/launcher/mobileconfiglogging/`), activity-feed impression
+logs (`/news/log/`) and Meta's ad-measurement pixel loaded into the in-app browser
+(`/fbevents.js`). Nothing else is cancelled: sign-in, two-factor, integrity and
+security checks, configuration, uploads, messages and every content request keep
+Instagram's native behaviour, and read receipts and story views are left to the
+ghost-mode options. The toggle is independent of **Ads** and is not frozen by the
+permanent lock. Turning it off restores Instagram's own telemetry.
+
+Feurstagram adds no synthetic views, interactions, heartbeat requests or background
+polling. This does not establish why an account was restricted, and does not
+guarantee protection from restrictions.
 
 ### Feed Item Filtering
 Endpoint selection alone cannot separate ads and "suggested" units that Instagram injects
@@ -440,8 +453,11 @@ hardcoded. Gated on the **Following feed only** toggle.
 Instagram checks that the running APK is signed by Meta before it follows a deep
 link into its own content. A re-signed FeurStagram build fails that check, so
 shared links (posts, reels, profiles) silently dropped to the home feed. A patch
-forces Instagram's signing-certificate trust checks to always pass, so it treats
-the build as genuine and deep links resolve normally. It matches on a stable
+adds FeurStagram's own signing key to Instagram's two signing-certificate trust
+checks, so it treats the build as genuine and deep links resolve normally. Every
+other app keeps Instagram's answer: trusting every key made the Android share
+sheet look like a Meta app, which Instagram's "share externally" scope removes
+(#182). It matches on a stable
 error string rather than obfuscated names, so it needs no per-version
 maintenance. Fixes #36 and #106.
 
@@ -470,7 +486,7 @@ the suggestions in it are emptied.
 | `/discover/topical_explore` | Explore tab content | Yes |
 | `/clips/home/`, `/clips/discover`, `/clips/get_blend_medias/` | Reels feed + discovery + Blend reels | Yes |
 | `/discover/ayml/`, `/discover/sectioned_ayml/`, `/discover/chaining/`, `/discover/recommended_accounts_for_category/`, `/discover/suggested_businesses/`, `/discover/recs_from_friends_suggestions/`, `/discover/recs_from_friends_user_info/`, `/discover/fetch_suggestion_details/`, `/discover/account_discovery/`, `/discover/reshare_suggestions/`, `/fbsearch/accounts_recs/`, `/friendships/feed_favorites_suggestions/`, `/friendships/share_to_friends_story_suggested_users/`, `/direct_v2/search_friending_suggestions/`, `/business/discovery/suggest_business/` | Suggested-account recommendations (profile "Suggested for you", stories-tray injected accounts, search null-state recs, post-follow chaining, friend/business suggestions) | Yes |
-| `/api/v1/ads/` (all `ads/*`), `/feed/async_ads_ranking/`, `/feed/shop_everything_feed_of_ads*`, `/feed/user_interests_contextual_feed_of_ads/`, `/discover/chaining_experience_contextual_ads/`, `/discover/chaining_experience_notification_ads/`, `/direct_v2/ads_for_ctd_ads_thread_view/`, `/direct_v2/should_show_ad_responses_tab/`, `/profile_ads/get_profile_ads/`, `/stories/stories_high_intent_discovery_ads/`, `/stories/stories_intent_aware_ads/`, `/commerce/product_collections/ads_collection_page/` | Sponsored ads injected into the feed, stories, profile, DMs, Explore chaining and commerce | Yes |
+| `/api/v1/ads/` (all `ads/*`, including `async_ads`, the ads injected between Reels and Stories), `/feed/injected_reels_media*` (story ads), `/feed/async_ads_ranking/`, `/feed/shop_everything_feed_of_ads*`, `/feed/user_interests_contextual_feed_of_ads/`, `/discover/chaining_experience_contextual_ads/`, `/discover/chaining_experience_notification_ads/`, `/direct_v2/ads_for_ctd_ads_thread_view/`, `/direct_v2/should_show_ad_responses_tab/`, `/profile_ads/get_profile_ads/`, `/stories/stories_high_intent_discovery_ads/`, `/stories/stories_intent_aware_ads/`, `/commerce/product_collections/ads_collection_page/` | Sponsored ads injected into the feed, stories, profile, DMs, Explore chaining and commerce | Yes |
 Note: despite the name, `/feed/reels_tray` is the stories tray endpoint in Instagram internals.
 
 Content selection is restricted to Instagram hosts and uses `String.contains()` on the URI path. Instagram changes URL shapes over time; adjust the rules in `extensions/.../Block.java` if a block stops matching.

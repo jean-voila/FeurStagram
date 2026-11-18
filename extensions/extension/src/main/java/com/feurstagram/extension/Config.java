@@ -80,9 +80,17 @@ public final class Config {
      * ranked feed away for people who keep the feed itself — issue #150.
      */
     public static boolean isLockable(String key) {
-        return key != null && (key.startsWith("block_") || key.startsWith("nav_show_")
-                || "limit_following_feed".equals(key));
+        if (key == null || UNLOCKED_KEYS.contains(key)) return false;
+        return key.startsWith("block_") || key.startsWith("nav_show_")
+                || "limit_following_feed".equals(key);
     }
+
+    /**
+     * block_* keys the permanent lock leaves alone: privacy choices, not
+     * distractions, so they stay reversible.
+     */
+    private static final java.util.Set<String> UNLOCKED_KEYS = new java.util.HashSet<>(
+            java.util.Arrays.asList("block_telemetry"));
 
     /**
      * Whether this value leaves the surface hidden. The two families store
@@ -143,6 +151,14 @@ public final class Config {
     public static boolean isNotesBlocked()     { return getBlocked("block_notes", true); }
     public static boolean isSuggestedBlocked() { return getBlocked("block_suggested", true); }
     public static boolean isAdsBlocked()       { return getBlocked("block_ads", true); }
+
+    /**
+     * Whether Instagram's analytics uploads are cancelled ({@link Block#onRequest}).
+     * On by default, for new installs and for updates alike (the key was never
+     * stored before). Not a surface: the permanent lock never freezes it, so it can
+     * always be turned back off.
+     */
+    public static boolean isTelemetryBlocked() { return getBlocked("block_telemetry", true); }
 
     /**
      * Whether the notifications ("heart") button in the feed header is hidden.

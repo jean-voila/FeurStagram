@@ -2,6 +2,7 @@ package com.feurstagram.extension;
 
 import android.util.Log;
 
+import java.io.IOException;
 import java.net.URI;
 
 /** Content policy and parse-level filtering. Requests always use Instagram's transport. */
@@ -86,10 +87,43 @@ public final class Block {
             "/commerce/product_collections/ads_collection_page/",
     };
 
-    /** Observe the native request without cancelling, replaying or modifying it. */
-    public static void onRequest(URI uri) {
+    /**
+     * Analytics sinks, cancelled while "Block telemetry" is on (the default). Only
+     * the batches of client events and the ad-measurement script: login, two-factor,
+     * integrity and security checks, configuration and every content request keep
+     * going, and read receipts and story views are left to ghost mode.
+     * Measured on 456: Pigeon/Falco event batches go to {@code <host>/pigeon_nest}
+     * or {@code <host>/logging_client_events} (graph.instagram.com, graph.facebook.com).
+     */
+    private static final String[] TELEMETRY = {
+            "/pigeon_nest",
+            "/logging_client_events",
+            // Which experiment flags the app read, uploaded as its own log.
+            "/launcher/mobileconfiglogging/",
+            // Impressions of the activity feed's rows.
+            "/news/log/",
+            // Meta's ad-measurement pixel, injected into pages of the in-app browser.
+            "/fbevents.js",
+    };
+
+    static boolean isTelemetry(String path) {
+        return path != null && containsAny(path, TELEMETRY);
+    }
+
+    /**
+     * Called by Instagram's network layer as each request starts. Content requests
+     * are never touched here (they are filtered once their response arrives); a
+     * telemetry upload is cancelled with an IOException, which Instagram's uploader
+     * treats as a network failure.
+     */
+    public static void onRequest(URI uri) throws IOException {
         if (uri == null) return;
-        if (DebugBridge.isNetworkTraceEnabled()) Log.i("FeurNet", "request " + uri.getPath());
+        String path = uri.getPath();
+        boolean telemetry = Config.isTelemetryBlocked() && isTelemetry(path);
+        if (DebugBridge.isNetworkTraceEnabled()) {
+            Log.i("FeurNet", (telemetry ? "cancel " : "request ") + uri.getHost() + " " + path);
+        }
+        if (telemetry) throw new IOException("Telemetry blocked by Feurstagram");
         if (isOpenedReel(uri)) openedReelStarted(uri);
     }
 

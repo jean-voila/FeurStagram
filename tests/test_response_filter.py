@@ -121,7 +121,7 @@ class ResponseFilterTests(unittest.TestCase):
         (cls.build / "Config.java").write_text("package com.feurstagram.extension; class Config { static boolean block=true;"
             + "static boolean isFollowingFeedOnly() { return true; }"
             + "".join(f"static boolean is{x}Blocked() {{ return block; }}" for x in
-                      ("Feed", "Stories", "Explore", "Reels", "Suggested", "Ads")) + "}")
+                      ("Feed", "Stories", "Explore", "Reels", "Suggested", "Ads", "Telemetry")) + "}")
         (cls.build / "DebugBridge.java").write_text("package com.feurstagram.extension; class DebugBridge {"
             "static boolean isNetworkTraceEnabled() { return false; }"
             "static void recordResponse(String p,int s,long r,long d,int n) { }"

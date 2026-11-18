@@ -35,9 +35,18 @@ Use the clone APK if you want to keep the official Instagram app installed at th
 ## Are blocked contents still downloaded?
 
 Instagram still sends its normal API requests. Feurstagram filters successful content
-responses after reception so the selected lists stay hidden. The requests and
-Instagram's native telemetry are no longer blocked; this can use more data than older
-builds. The app does not generate fake views or interactions.
+responses after reception so the selected lists stay hidden; this can use more data
+than builds that cancelled those requests. The app does not generate fake views or
+interactions.
+
+## Does Feurstagram block Instagram's telemetry?
+
+Yes, by default. *Settings → Privacy → Block telemetry* cancels the requests that
+upload Instagram's usage analytics (event batches, experiment logs, the ad pixel of the
+in-app browser). Sign-in, security checks, messages and content requests are not
+touched, and read receipts and story views have their own ghost-mode options. The
+switch is independent of the Ads block, is on after an update too, and can always be
+turned off, even with the permanent lock on.
 
 ## Can my Instagram account be banned?
 

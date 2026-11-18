@@ -703,6 +703,9 @@ public final class Settings {
         sealGroup(context, content);
 
         LinearLayout app = addSection(context, column, "App");
+        addSectionRow(context, app, "shield", "Privacy", privacySummary(),
+                () -> pages.open("Privacy", "What Instagram learns about how you use it.",
+                        Settings::buildPrivacy));
         addSectionRow(context, app, "moon", "Display and popups", displaySummary(),
                 () -> pages.open("Display and popups", "How Instagram looks and talks to you.",
                         Settings::buildDisplay));
@@ -818,6 +821,16 @@ public final class Settings {
         addRow(context, display, "Force dark (disable HDR)", "force_sdr", Config.isForceSdr());
         addRow(context, display, "Instagram popups", "hide_toasts", Config.arePopupsHidden());
         sealGroup(context, display);
+    }
+
+    private static void buildPrivacy(Context context, LinearLayout column) {
+        LinearLayout telemetry = addGroup(context, column);
+        addRow(context, telemetry, "Block telemetry", "block_telemetry", Config.isTelemetryBlocked());
+        sealGroup(context, telemetry);
+    }
+
+    private static String privacySummary() {
+        return Config.isTelemetryBlocked() ? "Telemetry blocked" : "Telemetry allowed";
     }
 
     private static void buildUpdates(Context context, LinearLayout column) {
@@ -1343,6 +1356,9 @@ public final class Settings {
     private static String supportText(String key) {
         if (key.equals("auto_update")) return "Check GitHub for a new version on launch.";
         if (key.equals("block_ads")) return "Block sponsored ads across Instagram.";
+        if (key.equals("block_telemetry")) {
+            return "Stop the usage analytics Instagram uploads in the background. Sign-in, security checks and messages are not affected. Stays reversible under the permanent lock.";
+        }
         if (key.equals("limit_following_feed")) return "Show only accounts you follow (needs the feed unblocked).";
         if (key.equals("hide_toasts")) return "Hide every Instagram popup, including “couldn’t refresh feed”.";
         if (key.equals("force_sdr")) return "Keep blacks deep by stopping Instagram forcing HDR on the UI.";
