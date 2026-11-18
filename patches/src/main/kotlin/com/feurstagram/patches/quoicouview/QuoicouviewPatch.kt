@@ -445,12 +445,32 @@ val quoicouviewPatch = bytecodePatch(
                 return-void
             """,
         )
-        InboxRefreshSetupFingerprint.method.apply {
-            val refresh = instructions.singleOrNull {
-                it.opcode == Opcode.INVOKE_INTERFACE && methodRef((it as ReferenceInstruction).reference)?.let { ref ->
-                    ref.returnType == "V" && ref.parameterTypes.map { p -> p.toString() } == listOf("Ljava/lang/Runnable;")
-                } == true
+        // The refresh action is set in the inbox's onCreateView up to 456.0.0.24;
+        // 456.0.0.53 moved that block into a static helper it calls.
+        fun isRefreshSetter(it: com.android.tools.smali.dexlib2.iface.instruction.Instruction) =
+            it.opcode == Opcode.INVOKE_INTERFACE && methodRef((it as ReferenceInstruction).reference)?.let { ref ->
+                ref.returnType == "V" && ref.parameterTypes.map { p -> p.toString() } == listOf("Ljava/lang/Runnable;")
+            } == true
+        val inboxSetup = InboxRefreshSetupFingerprint.method
+        val refreshMethod = if (inboxSetup.instructions.count(::isRefreshSetter) == 1) inboxSetup else {
+            inboxSetup.instructions.mapNotNull { instruction ->
+                methodRef((instruction as? ReferenceInstruction)?.reference)?.takeIf {
+                    (instruction.opcode == Opcode.INVOKE_STATIC || instruction.opcode == Opcode.INVOKE_STATIC_RANGE) &&
+                        it.returnType == "V" && it.definingClass.startsWith("LX/")
+                }
+            }.distinct().filter { ref ->
+                classDefByOrNull(ref.definingClass)?.methods?.singleOrNull {
+                    it.name == ref.name && it.parameterTypes.map { p -> p.toString() } ==
+                        ref.parameterTypes.map { p -> p.toString() }
+                }?.implementation?.instructions?.count(::isRefreshSetter) == 1
+            }.singleOrNull()?.let { ref ->
+                mutableClassDefBy(ref.definingClass).methods.single {
+                    it.name == ref.name && it.params == ref.parameterTypes.map { p -> p.toString() }
+                }
             } ?: throw PatchException("Inbox setup has no unique refresh action setter")
+        }
+        val refresh = refreshMethod.instructions.single(::isRefreshSetter)
+        refreshMethod.apply {
             val action = (refresh as FiveRegisterInstruction).registerD
             addInstructions(refresh.location.index,
                 """
@@ -697,15 +717,21 @@ val quoicouviewPatch = bytecodePatch(
             it.name == swipeAllowedName && it.parameterTypes.isEmpty() && it.returnType == "Z"
         }
 
+        // The Home tab argument is usually loaded right before the check; since
+        // 456.0.0.53 the inlined panel update reuses a register loaded much earlier,
+        // so the last write to that register is looked up instead.
         fun homeChecks(method: MutableMethod) = method.instructions.filter { instruction ->
             val index = instruction.location.index
             instruction.opcode == Opcode.INVOKE_VIRTUAL && index > 0 &&
                 methodRef((instruction as ReferenceInstruction).reference)?.let {
                     it.definingClass == tabControllerType && it.name == isCurrentTab.name
-                } == true && method.instructions[index - 1].let { load ->
-                    load.opcode == Opcode.SGET_OBJECT &&
-                        (load as ReferenceInstruction).reference.toString() == homeTab.toString() &&
-                        (load as OneRegisterInstruction).registerA == (instruction as FiveRegisterInstruction).registerD
+                } == true && run {
+                    val tab = (instruction as FiveRegisterInstruction).registerD
+                    val load = (index - 1 downTo 0).map { method.instructions[it] }.firstOrNull {
+                        it.opcode.setsRegister() && it is OneRegisterInstruction && it.registerA == tab
+                    }
+                    load != null && load.opcode == Opcode.SGET_OBJECT &&
+                        (load as ReferenceInstruction).reference.toString() == homeTab.toString()
                 }
         }
         // Instagram 455 moved panel enabling from onTabChanged into the swipe
