@@ -194,9 +194,11 @@ public final class Block {
      * the tray response itself, so the network block cannot catch them.
      */
     public static Object filterTrayEntry(Object entry) {
-        if (entry == null) return null;
-        if (Config.isStoriesBlocked()) return null;
-        if (!Config.isSuggestedBlocked()) return entry;
+        // Not gated on the Stories block: this parser builds every story model
+        // (a profile's ring, search, highlights, links), not only the home tray's
+        // entries. The tray itself is emptied at the response level, so dropping
+        // here made every story "unavailable" once the tray was hidden (#180).
+        if (entry == null || !Config.isSuggestedBlocked()) return entry;
         try {
             String getter = trayEntryTypeGetter();
             if (getter.isEmpty()) return entry;
