@@ -2,15 +2,20 @@ package com.feurstagram.patches.signature
 
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
+import app.morphe.patcher.extensions.InstructionExtensions.instructions
 import app.morphe.patcher.extensions.InstructionExtensions.removeInstructions
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
+import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.iface.Method
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.feurstagram.patches.shared.Constants.COMPATIBILITY_INSTAGRAM
+import com.feurstagram.patches.shared.Constants.EXTENSION
 
 /**
  * Instagram wraps a signing certificate's SHA-256 in a "key hash" (Base64, 43 chars) via
@@ -32,6 +37,8 @@ import com.feurstagram.patches.shared.Constants.COMPATIBILITY_INSTAGRAM
  * that type by its stable error string. The obfuscated class/method names therefore never
  * appear in this patch and it survives Instagram renaming them between releases.
  */
+private const val SIGNATURE_TRUST = "Lcom/feurstagram/extension/SignatureTrust;"
+
 internal object KeyHashClassFingerprint : Fingerprint(
     strings = listOf("Invalid SHA256 key hash"),
 )
@@ -54,16 +61,34 @@ val signatureCheckBypassPatch = bytecodePatch(
 ) {
     compatibleWith(COMPATIBILITY_INSTAGRAM)
 
+    extendWith(EXTENSION)
+
     execute {
         val keyHashType = KeyHashClassFingerprint.classDef.type
 
         // Only one method with signature boolean(X.3uq): X.1eX.A01, the allowlist membership
         // check powering X.0XS.A02 (the self-signature gate) and every other trust decision.
+        // Only our own key is added: every other app keeps Instagram's answer. Trusting
+        // every key made the "different key" intent scope drop the Android share sheet
+        // as if it were a Meta app, so "Share externally" did nothing (issue #182).
         Fingerprint(
             returnType = "Z",
             parameters = listOf(keyHashType),
             custom = { method, _ -> AccessFlags.STATIC.isSet(method.accessFlags) },
-        ).method.replaceBodyToReturnTrue("X.1eX.A01 signature allowlist check")
+        ).method.apply {
+            if (implementation!!.registerCount < 2) throw PatchException("Signature allowlist check has no free register")
+            addInstructionsWithLabels(
+                0,
+                """
+                    invoke-static { p0 }, $SIGNATURE_TRUST->isOwnKeyHash(Ljava/lang/Object;)Z
+                    move-result v0
+                    if-eqz v0, :instagram
+                    const/4 v0, 0x1
+                    return v0
+                """,
+                ExternalLabel("instagram", getInstruction(0)),
+            )
+        }
 
         // The family-app scope trust check used by the deep-link resolver
         // (com.facebook.secure.deeplink). Up to Instagram 445 it is the only method with
@@ -79,7 +104,11 @@ val signatureCheckBypassPatch = bytecodePatch(
         // (a getter on its first parameter) instead of taking them as parameters. That shape
         // is unique in the APK; the class's own "*|all_packages|*" string is not, so it is
         // matched on structure alone.
-        val scopeCheck = legacyScopeCheck ?: Fingerprint(
+        if (legacyScopeCheck != null) {
+            legacyScopeCheck.replaceBodyToReturnTrue("Signature scope check")
+            return@execute
+        }
+        val scopeCheck = Fingerprint(
             returnType = "Z",
             custom = { method, _ ->
                 !AccessFlags.STATIC.isSet(method.accessFlags) &&
@@ -88,7 +117,32 @@ val signatureCheckBypassPatch = bytecodePatch(
                     method.readsKeyHashFrom(method.parameterTypes[0].toString(), keyHashType)
             },
         ).method
-        scopeCheck.replaceBodyToReturnTrue("Signature scope check")
+        // Same rule as the allowlist: a caller signed with our key is trusted, every
+        // other app gets Instagram's answer. The third-party intent scope behind the
+        // share sheet asks this about each target (issue #182).
+        val identity = scopeCheck.parameterTypes[0].toString()
+        val keyHashGetter = scopeCheck.instructions.firstNotNullOf { instruction ->
+            ((instruction as? ReferenceInstruction)?.reference as? MethodReference)?.takeIf {
+                it.returnType == keyHashType && it.definingClass == identity && it.parameterTypes.isEmpty()
+            }
+        }
+        scopeCheck.apply {
+            if (implementation!!.registerCount < 4) throw PatchException("Signature scope check has no free register")
+            addInstructionsWithLabels(
+                0,
+                """
+                    if-eqz p1, :instagram
+                    invoke-virtual { p1 }, $identity->${keyHashGetter.name}()$keyHashType
+                    move-result-object v0
+                    invoke-static { v0 }, $SIGNATURE_TRUST->isOwnKeyHash(Ljava/lang/Object;)Z
+                    move-result v0
+                    if-eqz v0, :instagram
+                    const/4 v0, 0x1
+                    return v0
+                """,
+                ExternalLabel("instagram", getInstruction(0)),
+            )
+        }
     }
 }
 
