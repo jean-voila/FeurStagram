@@ -120,10 +120,13 @@ public final class Block {
         if (uri == null) return;
         String path = uri.getPath();
         boolean telemetry = Config.isTelemetryBlocked() && isTelemetry(path);
+        // Story views belong to ghost mode, never to the telemetry switch.
+        boolean storySeen = !telemetry && Ghost.isStorySeen(uri) && Ghost.hideStoryViews();
         if (DebugBridge.isNetworkTraceEnabled()) {
-            Log.i("FeurNet", (telemetry ? "cancel " : "request ") + uri.getHost() + " " + path);
+            Log.i("FeurNet", (telemetry || storySeen ? "cancel " : "request ") + uri.getHost() + " " + path);
         }
         if (telemetry) throw new IOException("Telemetry blocked by Feurstagram");
+        if (storySeen) throw new IOException("Story view hidden by Feurstagram");
         if (isOpenedReel(uri)) openedReelStarted(uri);
     }
 

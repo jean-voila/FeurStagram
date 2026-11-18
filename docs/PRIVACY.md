@@ -27,7 +27,10 @@ the phone: client event batches (`/pigeon_nest`, `/logging_client_events`), the
 experiment-exposure log, activity-feed impression logs and Meta's ad-measurement
 pixel in the in-app browser. Sign-in, two-factor, integrity and security checks,
 configuration, uploads and messages are never cancelled. Read receipts, the typing
-indicator and story views are separate ghost-mode options. The switch can be turned
+indicator and story views are separate ghost-mode options (Settings → Privacy, all
+off by default): when on, Instagram's "mark thread seen" mutation is not queued, the
+composer no longer reports typing, and the request that reports watched stories is
+cancelled on the phone. The switch can be turned
 off at any time, including under the permanent lock, which restores Instagram's own
 telemetry.
 

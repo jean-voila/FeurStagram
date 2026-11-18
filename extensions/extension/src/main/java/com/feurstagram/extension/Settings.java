@@ -829,10 +829,21 @@ public final class Settings {
         LinearLayout telemetry = addGroup(context, column);
         addRow(context, telemetry, "Block telemetry", "block_telemetry", Config.isTelemetryBlocked());
         sealGroup(context, telemetry);
+
+        LinearLayout ghost = addSection(context, column, "Ghost mode");
+        addRow(context, ghost, "Hide DM read receipts", "ghost_dm_seen", Config.getBlocked("ghost_dm_seen", false));
+        addRow(context, ghost, "Hide typing indicator", "ghost_typing", Config.getBlocked("ghost_typing", false));
+        addRow(context, ghost, "Hide story views", "ghost_story_views", Config.getBlocked("ghost_story_views", false));
+        sealGroup(context, ghost);
     }
 
     private static String privacySummary() {
-        return Config.isTelemetryBlocked() ? "Telemetry blocked" : "Telemetry allowed";
+        int ghost = 0;
+        for (String key : new String[] {"ghost_dm_seen", "ghost_typing", "ghost_story_views"}) {
+            if (Config.getBlocked(key, false)) ghost++;
+        }
+        return (Config.isTelemetryBlocked() ? "Telemetry blocked" : "Telemetry allowed")
+                + (ghost == 0 ? "" : ", ghost mode " + ghost + " of 3");
     }
 
     private static void buildUpdates(Context context, LinearLayout column) {
@@ -1358,6 +1369,13 @@ public final class Settings {
     private static String supportText(String key) {
         if (key.equals("auto_update")) return "Check GitHub for a new version on launch.";
         if (key.equals("block_ads")) return "Block sponsored ads across Instagram.";
+        if (key.equals("ghost_dm_seen")) {
+            return "People don't see when you read their messages. Chats you read stay unread here too.";
+        }
+        if (key.equals("ghost_typing")) return "People don't see “typing…” while you write to them.";
+        if (key.equals("ghost_story_views")) {
+            return "Watch stories without appearing in their viewers. Rings still turn grey for you.";
+        }
         if (key.equals("block_telemetry")) {
             return "Stop the usage analytics Instagram uploads in the background. Sign-in, security checks and messages are not affected. Stays reversible under the permanent lock.";
         }

@@ -223,6 +223,11 @@ window, with a back arrow; Back returns to the overview. The sections are:
 - **Privacy** — *Block telemetry* (on by default, after an update too): cancels
   Instagram's usage-analytics uploads (see [Telemetry blocking](#telemetry-blocking)).
   It is independent of the Ads block and stays reversible under the permanent lock.
+  *Ghost mode* adds three independent options, all off by default: *Hide DM read
+  receipts* (people don't get "Seen"; the chat stays unread on your phone too, and
+  replying does not send a receipt), *Hide typing indicator* and *Hide story views*
+  (you don't appear among a story's viewers; rings still turn grey for you). They are
+  separate from telemetry blocking and not frozen by the permanent lock.
 - **Display and popups** — *Force dark (disable HDR)* (on by default): stops Instagram
   forcing its window into HDR mode, which lifts the black floor and washes out
   the dark UI on HDR OLED screens. Turn it off to keep Instagram's HDR behaviour.

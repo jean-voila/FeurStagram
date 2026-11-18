@@ -109,7 +109,7 @@ class ResponseFilterTests(unittest.TestCase):
         cls.tmp = tempfile.TemporaryDirectory()
         cls.build = Path(cls.tmp.name)
         src = ROOT / "extensions/extension/src/main/java/com/feurstagram/extension"
-        for name in ("JsonContentFilter.java", "Block.java", "ResponseFilter.java", "LimitFeed.java"):
+        for name in ("JsonContentFilter.java", "Block.java", "ResponseFilter.java", "LimitFeed.java", "Ghost.java"):
             text = (src / name).read_text()
             # Stand in for the two direct field-read bridges resolved by Morphe.
             text = text.replace("static URI requestUri(Object request) { return null; }",
@@ -120,6 +120,7 @@ class ResponseFilterTests(unittest.TestCase):
         (cls.build / "Harness.java").write_text(HARNESS)
         (cls.build / "Config.java").write_text("package com.feurstagram.extension; class Config { static boolean block=true;"
             + "static boolean isFollowingFeedOnly() { return true; }"
+            + "static boolean getBlocked(String key, boolean value) { return value; }"
             + "".join(f"static boolean is{x}Blocked() {{ return block; }}" for x in
                       ("Feed", "Stories", "Explore", "Reels", "Suggested", "Ads", "Telemetry")) + "}")
         (cls.build / "DebugBridge.java").write_text("package com.feurstagram.extension; class DebugBridge {"
