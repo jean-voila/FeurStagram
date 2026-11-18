@@ -25,8 +25,12 @@ public final class ResponseFilter {
         int status = responseStatus(response);
         boolean hide = status >= 200 && status < 300 && Block.hidesResponse(uri);
         boolean capture = DebugBridge.shouldCapture(uri == null ? null : uri.getPath());
-        if (hide || capture || DebugBridge.isNetworkTraceEnabled()) {
+        // An opened reel's own request is followed to its end, see Block.awaitOpenedReels.
+        boolean openedReel = uri != null && Block.isOpenedReel(uri);
+        if (hide || capture || openedReel || DebugBridge.isNetworkTraceEnabled()) {
             State state = new State(uri, status, hide);
+            state.uri = uri;
+            state.waitForOpenedReel = hide && Block.isReelChaining(uri);
             if (capture) state.capture = new java.io.ByteArrayOutputStream();
             RESPONSES.put(dispatcher, state);
         } else {
@@ -37,6 +41,10 @@ public final class ResponseFilter {
     public static ByteBuffer onBody(Object dispatcher, Object request, ByteBuffer body) {
         State state = RESPONSES.get(dispatcher);
         if (state == null || body == null) return body;
+        if (state.waitForOpenedReel) {
+            state.waitForOpenedReel = false;
+            Block.awaitOpenedReels();
+        }
         state.received += body.remaining();
         if (state.capture != null) {
             ByteBuffer copy = body.duplicate();
@@ -52,6 +60,7 @@ public final class ResponseFilter {
 
     private static void finish(Object dispatcher, String event) {
         State state = RESPONSES.remove(dispatcher);
+        if (state != null && state.uri != null && Block.isOpenedReel(state.uri)) Block.openedReelDone(state.uri);
         if (state != null && state.capture != null) DebugBridge.saveCapture(state.path, state.capture.toByteArray());
         if (state != null && "complete".equals(event)) {
             DebugBridge.recordResponse(state.path, state.status, state.received, state.delivered,
@@ -71,6 +80,8 @@ public final class ResponseFilter {
         final JsonContentFilter filter;
         long received, delivered;
         java.io.ByteArrayOutputStream capture;
+        URI uri;
+        boolean waitForOpenedReel;
         State(URI uri, int status, boolean hide) {
             path = uri == null ? "" : uri.getPath();
             this.status = status;

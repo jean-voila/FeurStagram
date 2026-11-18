@@ -88,11 +88,69 @@ public final class Block {
 
     /** Observe the native request without cancelling, replaying or modifying it. */
     public static void onRequest(URI uri) {
-        if (uri != null && DebugBridge.isNetworkTraceEnabled()) {
-            Log.i("FeurNet", "request " + uri.getPath());
+        if (uri == null) return;
+        if (DebugBridge.isNetworkTraceEnabled()) Log.i("FeurNet", "request " + uri.getPath());
+        if (isOpenedReel(uri)) openedReelStarted(uri);
+    }
+
+    // --- A reel opened on its own (a link, a share in a story or a DM) ------------
+
+    /**
+     * The reel viewer opened on one reel asks for that reel ({@code /clips/items/}
+     * with its id) and, at the same time, for the reels to scroll to after it
+     * ({@code /clips/discover/stream/}). With Reels blocked the second one comes back
+     * empty, and after a cache wipe it can land first: the viewer then has nothing
+     * at all to show and fails ("Something went wrong", issue #184), while a second
+     * tap works from the cache. So an emptied stream waits for the opened reel's own
+     * request to finish first, never longer than {@link #OPENED_REEL_WAIT_MS}.
+     */
+    private static final long OPENED_REEL_WAIT_MS = 2500L;
+    /** How long a started request counts as in flight if its end is never seen. */
+    private static final long OPENED_REEL_STALE_MS = 6000L;
+    private static final java.util.Map<URI, Long> OPENED_REELS = new java.util.HashMap<>();
+
+    static boolean isOpenedReel(URI uri) {
+        String path = uri.getPath();
+        String query = uri.getRawQuery();
+        return path != null && path.contains("/clips/items/") && query != null && query.contains("clips_media_ids");
+    }
+
+    static boolean isReelChaining(URI uri) {
+        return uri != null && uri.getPath() != null && uri.getPath().contains("/clips/discover/stream/");
+    }
+
+    private static void openedReelStarted(URI uri) {
+        synchronized (OPENED_REELS) {
+            OPENED_REELS.put(uri, System.currentTimeMillis());
         }
     }
 
+    static void openedReelDone(URI uri) {
+        synchronized (OPENED_REELS) {
+            if (OPENED_REELS.remove(uri) != null) OPENED_REELS.notifyAll();
+        }
+    }
+
+    /** Wait (bounded) until no opened-reel request is in flight. */
+    static void awaitOpenedReels() {
+        long deadline = System.currentTimeMillis() + OPENED_REEL_WAIT_MS;
+        synchronized (OPENED_REELS) {
+            while (true) {
+                long now = System.currentTimeMillis();
+                java.util.Iterator<Long> started = OPENED_REELS.values().iterator();
+                while (started.hasNext()) {
+                    if (now - started.next() > OPENED_REEL_STALE_MS) started.remove();
+                }
+                if (OPENED_REELS.isEmpty() || now >= deadline) return;
+                try {
+                    OPENED_REELS.wait(deadline - now);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+        }
+    }
 
     /** Only content delivery is filtered; logging, seen, uploads and security are untouched. */
     static boolean hidesResponse(URI uri) {
