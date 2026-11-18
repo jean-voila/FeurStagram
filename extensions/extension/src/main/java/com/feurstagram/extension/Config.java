@@ -126,6 +126,9 @@ public final class Config {
      */
     public static boolean isForceSdr() { return getBlocked("force_sdr", true); }
 
+    /** Whether Instagram is drawn in grayscale ({@link Grayscale}). Off by default; not a surface. */
+    public static boolean isGrayscale() { return getBlocked("grayscale", false); }
+
     /**
      * Whether the home feed is restricted to accounts you follow (chronological
      * "Following" feed) instead of the recommended feed. Off by default. The

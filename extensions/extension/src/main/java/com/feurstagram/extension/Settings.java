@@ -113,6 +113,7 @@ public final class Settings {
     public static void installHomeTabWatcher(ViewGroup tabBar) {
         if (tabBar == null) return;
         Activities.track(tabBar.getContext());
+        Grayscale.install(tabBar.getContext());
         tabBar.getViewTreeObserver().addOnGlobalLayoutListener(new HomeTabWatcher(tabBar));
         ProfileSettingsButton.install(tabBar);
         Hiders.installAll(tabBar);
@@ -819,6 +820,7 @@ public final class Settings {
     private static void buildDisplay(Context context, LinearLayout column) {
         LinearLayout display = addGroup(context, column);
         addRow(context, display, "Force dark (disable HDR)", "force_sdr", Config.isForceSdr());
+        addRow(context, display, "Grayscale", "grayscale", Config.isGrayscale());
         addRow(context, display, "Instagram popups", "hide_toasts", Config.arePopupsHidden());
         sealGroup(context, display);
     }
@@ -857,7 +859,7 @@ public final class Settings {
     private static String displaySummary() {
         String dark = Config.isForceSdr() ? "Force dark on" : "Force dark off";
         String popups = Config.arePopupsHidden() ? "popups hidden" : "popups shown";
-        return dark + ", " + popups;
+        return dark + ", " + popups + (Config.isGrayscale() ? ", grayscale" : "");
     }
 
     private static String landingLabel(String value) {
@@ -1362,6 +1364,9 @@ public final class Settings {
         if (key.equals("limit_following_feed")) return "Show only accounts you follow (needs the feed unblocked).";
         if (key.equals("hide_toasts")) return "Hide every Instagram popup, including “couldn’t refresh feed”.";
         if (key.equals("force_sdr")) return "Keep blacks deep by stopping Instagram forcing HDR on the UI.";
+        if (key.equals("grayscale")) {
+            return "Show Instagram without colour: interface, photos and videos. Only on screen; what you save or share keeps its colours.";
+        }
         if (key.equals("block_friends_lane")) return "Hide the Friends tab and its avatars in the Reels header.";
         if (key.equals("block_notifications")) return "Hide the notifications (heart) button in the feed header.";
         if (key.equals("block_threads")) return "Hide the Threads button at the top of your profile.";

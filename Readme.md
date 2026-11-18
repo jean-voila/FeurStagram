@@ -228,6 +228,11 @@ window, with a back arrow; Back returns to the overview. The sections are:
   the dark UI on HDR OLED screens. Turn it off to keep Instagram's HDR behaviour.
   *Instagram popups* (on by default) drops Instagram's own toasts, such as the
   native transient network-error messages. Content blocks no longer manufacture these errors.
+  *Grayscale* (off by default) draws Instagram without colour: the interface, photos,
+  Stories, Reels and feed videos, the gallery and every dialog or sheet. It is a
+  display filter only (saved and shared files keep their colours) and applies to
+  Instagram alone. Surfaces drawn outside the app's windows by the system keep their
+  colours: the live camera preview and live broadcasts.
 - **Landing page** — choose which surface the app jumps to on cold start
   (Home feed, Search, Direct messages, or Profile). A surface whose navigation
   icon is hidden can't be picked, and stops being used if you hide it later:
@@ -460,6 +465,17 @@ sheet look like a Meta app, which Instagram's "share externally" scope removes
 (#182). It matches on a stable
 error string rather than obfuscated names, so it needs no per-version
 maintenance. Fixes #36 and #106.
+
+### Grayscale
+Each window of the app (activities, dialogs, sheets, popups) is drawn into a
+hardware layer whose paint holds a zero-saturation colour matrix; new windows are
+caught as Android's window manager records them. Instagram's video player normally
+renders on a `SurfaceView`, whose pixels never pass through the window, so while
+Grayscale is on the player is sent down its own "enforce texture view" path
+(`getEnforceTextureView`, an unobfuscated name), which the filter covers. The camera
+preview and live video stay on a `SurfaceView` and keep their colours. Measured on a
+Pixel over six Reels swipes: frame time p50 5 → 7 ms, p90 10 → 15 ms, janky frames
+3.8 % → 4.1 %.
 
 ### Force SDR display
 Instagram switches its window into HDR mode at runtime (server-gated per
