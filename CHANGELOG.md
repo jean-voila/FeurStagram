@@ -10,6 +10,21 @@ Nothing yet.
 
 ### Added
 
+- **Unlock timer** (Content → Unlock timer, off by default). A daily or weekly allowance
+  (1h, 2h, 5h, 8h, 12h, 24h or custom) during which the blocked surfaces picked for it work
+  again. `Timer` keeps the state in preferences on the wall clock (idle, running, paused,
+  skipped; time used; run start; period), refilled at midnight or on Monday once no session
+  runs. `Config`'s surface getters return the stored block unless a running session unlocks
+  that surface (and its Home, Search or Reels icon); the settings read the stored value. Every
+  transition (start, pause, resume, skip, end of allowance, including one that happened while
+  the app was closed) clears the cache and restarts. `TimerPill` adds a pill to each Instagram
+  activity's window while a session exists: under the status bar at first (Android gives
+  touches on the bar to the system), draggable anywhere with momentum, position kept; a tap
+  grows it into a card with Pause/Resume and Skip (confirmed). Under the permanent lock the
+  timer can only be narrowed (fewer surfaces, less time, weekly instead of daily, off).
+  Tested on device: start, pause, resume, skip, expiry, lock rules, position after restart;
+  dragging 1 janky frame of 290 (p90 12 ms).
+
 - **Block telemetry** (Settings → Privacy, on by default, and on after an update since the key
   was never stored). `Block.onRequest` cancels, with an IOException at the Tigon request hook,
   the uploads of usage analytics: Pigeon/Falco batches (`/pigeon_nest`,

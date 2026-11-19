@@ -54,6 +54,70 @@ public final class Config {
         return prefs == null ? defaultValue : prefs.getBoolean(key, defaultValue);
     }
 
+    /** A surface's stored block, with its default: what the settings show and save. */
+    public static boolean storedBlocked(String key) {
+        String def = SURFACE_DEFAULTS.get(key);
+        return getBlocked(key, def == null || Boolean.parseBoolean(def));
+    }
+
+    /** What the app applies: the stored block, unless the unlock timer opens it now. */
+    private static boolean effective(String key) {
+        return storedBlocked(key) && !Timer.unlocks(key);
+    }
+
+    private static final java.util.Map<String, String> SURFACE_DEFAULTS = new java.util.HashMap<>();
+    static {
+        String[][] defaults = {
+                {"block_feed", "true"},
+                {"block_explore", "true"},
+                {"block_reels", "true"},
+                {"block_friends_lane", "true"},
+                {"block_stories", "false"},
+                {"block_instants", "true"},
+                {"block_notes", "true"},
+                {"block_suggested", "true"},
+                {"block_ads", "true"},
+                {"block_comments", "false"},
+                {"block_notifications", "false"},
+                {"block_threads", "true"},
+        };
+        for (String[] entry : defaults) SURFACE_DEFAULTS.put(entry[0], entry[1]);
+    }
+
+    static long getLong(String key, long def) {
+        SharedPreferences prefs = prefs();
+        try {
+            return prefs == null ? def : prefs.getLong(key, def);
+        } catch (ClassCastException e) {
+            return def;
+        }
+    }
+
+    static void putLong(String key, long value) {
+        SharedPreferences prefs = prefs();
+        if (prefs != null) prefs.edit().putLong(key, value).apply();
+    }
+
+    static String getString(String key, String def) {
+        SharedPreferences prefs = prefs();
+        try {
+            return prefs == null ? def : prefs.getString(key, def);
+        } catch (ClassCastException e) {
+            return def;
+        }
+    }
+
+    static void putString(String key, String value) {
+        SharedPreferences prefs = prefs();
+        if (prefs != null) prefs.edit().putString(key, value).apply();
+    }
+
+    /** A plain boolean write, outside the permanent lock's surface rules. */
+    static void putBoolean(String key, boolean value) {
+        SharedPreferences prefs = prefs();
+        if (prefs != null) prefs.edit().putBoolean(key, value).apply();
+    }
+
     public static void setBlocked(String key, boolean value) {
         // Hardcore lock only forbids *revealing* a surface. Hiding one is always
         // allowed so users can still tighten. A surface may be revealed only when
@@ -138,9 +202,9 @@ public final class Config {
         return getBlocked("limit_following_feed", false);
     }
 
-    public static boolean isFeedBlocked()      { return getBlocked("block_feed", true); }
-    public static boolean isExploreBlocked()   { return getBlocked("block_explore", true); }
-    public static boolean isReelsBlocked()     { return getBlocked("block_reels", true); }
+    public static boolean isFeedBlocked()      { return effective("block_feed"); }
+    public static boolean isExploreBlocked()   { return effective("block_explore"); }
+    public static boolean isReelsBlocked()     { return effective("block_reels"); }
     /**
      * Whether the "Friends" tab and its avatar facepile are hidden from the Reels
      * viewer's header. On by default: Instagram gates that entry point behind a
@@ -148,14 +212,14 @@ public final class Config {
      * reachable from an internal developer menu, so the only way out is to drop
      * it from the view tree — issue #94.
      */
-    public static boolean isFriendsLaneBlocked() { return getBlocked("block_friends_lane", true); }
-    public static boolean isStoriesBlocked()   { return getBlocked("block_stories", false); }
-    public static boolean isInstantsBlocked()  { return getBlocked("block_instants", true); }
-    public static boolean isNotesBlocked()     { return getBlocked("block_notes", true); }
-    public static boolean isSuggestedBlocked() { return getBlocked("block_suggested", true); }
-    public static boolean isAdsBlocked()       { return getBlocked("block_ads", true); }
+    public static boolean isFriendsLaneBlocked() { return effective("block_friends_lane"); }
+    public static boolean isStoriesBlocked()   { return effective("block_stories"); }
+    public static boolean isInstantsBlocked()  { return effective("block_instants"); }
+    public static boolean isNotesBlocked()     { return effective("block_notes"); }
+    public static boolean isSuggestedBlocked() { return effective("block_suggested"); }
+    public static boolean isAdsBlocked()       { return effective("block_ads"); }
     /** Comment buttons, counts and lists ({@link Comments}). Off by default. */
-    public static boolean isCommentsBlocked()  { return getBlocked("block_comments", false); }
+    public static boolean isCommentsBlocked()  { return effective("block_comments"); }
 
     /**
      * Whether Instagram's analytics uploads are cancelled ({@link Block#onRequest}).
@@ -170,10 +234,10 @@ public final class Config {
      * Off by default: it's an opt-in distraction cut, and people expect their
      * notifications entry-point to still be there after an update.
      */
-    public static boolean isNotificationsButtonBlocked() { return getBlocked("block_notifications", false); }
+    public static boolean isNotificationsButtonBlocked() { return effective("block_notifications"); }
 
     /** Whether the Threads button in the profile header is hidden. On by default. */
-    public static boolean isThreadsButtonBlocked() { return getBlocked("block_threads", true); }
+    public static boolean isThreadsButtonBlocked() { return effective("block_threads"); }
 
     /**
      * Whether Instagram's popups (its own toasts: "Couldn't refresh feed",
@@ -253,6 +317,10 @@ public final class Config {
 
     /** Whether the bottom-bar icon for a {@code nav_show_*} key is currently shown. */
     public static boolean isNavTabShown(String navKey) {
+        // A running unlock session also brings back the icon of what it opens.
+        if ("nav_show_reels".equals(navKey) && Timer.unlocks("block_reels")) return true;
+        if ("nav_show_search".equals(navKey) && Timer.unlocks("block_explore")) return true;
+        if ("nav_show_home".equals(navKey) && Timer.unlocks("block_feed") && !isQuoicouviewEnabled()) return true;
         if ("nav_show_home".equals(navKey)) return isHomeTabShown();
         if ("nav_show_direct".equals(navKey) && isQuoicouviewEnabled()) return true;
         return getBlocked(navKey, navDefault(navKey));
@@ -300,16 +368,16 @@ public final class Config {
     /** Snapshot every lockable toggle's current value for the permanent lock. */
     public static void captureBaseline() {
         HashMap<String, Boolean> baseline = new HashMap<>();
-        baseline.put("block_feed", isFeedBlocked());
-        baseline.put("block_explore", isExploreBlocked());
-        baseline.put("block_reels", isReelsBlocked());
-        baseline.put("block_friends_lane", isFriendsLaneBlocked());
-        baseline.put("block_stories", isStoriesBlocked());
-        baseline.put("block_instants", isInstantsBlocked());
-        baseline.put("block_notes", isNotesBlocked());
-        baseline.put("block_suggested", isSuggestedBlocked());
-        baseline.put("block_ads", isAdsBlocked());
-        baseline.put("block_comments", isCommentsBlocked());
+        baseline.put("block_feed", storedBlocked("block_feed"));
+        baseline.put("block_explore", storedBlocked("block_explore"));
+        baseline.put("block_reels", storedBlocked("block_reels"));
+        baseline.put("block_friends_lane", storedBlocked("block_friends_lane"));
+        baseline.put("block_stories", storedBlocked("block_stories"));
+        baseline.put("block_instants", storedBlocked("block_instants"));
+        baseline.put("block_notes", storedBlocked("block_notes"));
+        baseline.put("block_suggested", storedBlocked("block_suggested"));
+        baseline.put("block_ads", storedBlocked("block_ads"));
+        baseline.put("block_comments", storedBlocked("block_comments"));
         baseline.put("limit_following_feed", isFollowingFeedOnly());
         for (String key : NAV_KEYS) {
             baseline.put(key, getBlocked(key, navDefault(key)));

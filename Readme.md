@@ -212,6 +212,16 @@ window, with a back arrow; Back returns to the overview. The sections are:
   buttons, counts, "View all comments" lines, the "Add a comment…" bar, the comment
   previews over stories and the story viewer's comment button; a direct link to
   comments opens the post without them.
+- **Unlock timer** (off by default) — a time allowance, refilled every day (at
+  midnight) or every week (Monday), during which the blocked surfaces you pick work
+  again. Pick 1h, 2h, 5h, 8h, 12h, 24h or a custom duration; surfaces that are not
+  blocked are greyed out. Start a session from the page; while it exists a pill shows
+  the time left, starting at the top centre and draggable anywhere like an Android
+  bubble. Tap it to open a card with *Pause* (blocks again, keeps the time) or
+  *Resume*, and *Skip* (ends the session; what is left is lost until the next
+  refill). Each start, pause, resume, skip and the end of the allowance clears the
+  cache and restarts Instagram, so what the session loaded does not outlive it.
+  Under the permanent lock the timer keeps working but can only be narrowed.
 - **Navigation bar** — show or hide each bottom-bar icon (Home, Search, Reels,
   Create, Messages, Profile) independently of the content blocks, with a live
   preview of the bar above the toggles. A toggle for a tab your Instagram build

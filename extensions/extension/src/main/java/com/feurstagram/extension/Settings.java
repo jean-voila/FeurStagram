@@ -115,6 +115,7 @@ public final class Settings {
         Activities.track(tabBar.getContext());
         Grayscale.install(tabBar.getContext());
         Hiders.installCommentButtonHider();
+        TimerPill.install(tabBar.getContext());
         tabBar.getViewTreeObserver().addOnGlobalLayoutListener(new HomeTabWatcher(tabBar));
         ProfileSettingsButton.install(tabBar);
         Hiders.installAll(tabBar);
@@ -499,7 +500,7 @@ public final class Settings {
     }
 
     /** Fills a section page's column. */
-    private interface SectionBuilder {
+    interface SectionBuilder {
         void build(Context context, LinearLayout column);
     }
 
@@ -513,7 +514,7 @@ public final class Settings {
      * the same window. Header, scroller and the pinned action row are shared;
      * only the title, the back arrow and the column's rows change.
      */
-    private static final class Pages {
+    static final class Pages {
         final Context context;
         final SettingsDialog dialog;
         final boolean hardcore;
@@ -659,7 +660,7 @@ public final class Settings {
     // --- The overview and its sections -----------------------------------------
 
     /** Keys behind the "Blocked surfaces" page, in display order. */
-    private static final String[] SURFACE_KEYS = {
+    static final String[] SURFACE_KEYS = {
             "block_feed", "block_explore", "block_reels", "block_friends_lane", "block_stories",
             "block_instants", "block_notes", "block_suggested", "block_ads", "block_comments",
             "block_notifications",
@@ -695,6 +696,8 @@ public final class Settings {
         addSectionRow(context, content, "eye_off", "Blocked surfaces",
                 hidden + " of " + SURFACE_KEYS.length + " hidden",
                 () -> pages.open("Blocked surfaces", "Hide parts of Instagram.", Settings::buildSurfaces));
+        addSectionRow(context, content, "timer", "Unlock timer", TimerSettings.summary(),
+                () -> pages.open("Unlock timer", "Time to use blocked surfaces again.", TimerSettings::build));
         addSectionRow(context, content, "layout", "Navigation bar", navSummary(context),
                 () -> pages.open("Navigation bar", "Choose the icons on the bottom bar.", Settings::buildNav));
         addSectionRow(context, content, "home", "Feed",
@@ -721,25 +724,11 @@ public final class Settings {
     }
 
     /** Whether a surface is hidden, with that key's own default. */
-    private static boolean isSurfaceHidden(String key) {
-        switch (key) {
-            case "block_feed": return Config.isFeedBlocked();
-            case "block_explore": return Config.isExploreBlocked();
-            case "block_reels": return Config.isReelsBlocked();
-            case "block_friends_lane": return Config.isFriendsLaneBlocked();
-            case "block_stories": return Config.isStoriesBlocked();
-            case "block_instants": return Config.isInstantsBlocked();
-            case "block_notes": return Config.isNotesBlocked();
-            case "block_suggested": return Config.isSuggestedBlocked();
-            case "block_ads": return Config.isAdsBlocked();
-            case "block_comments": return Config.isCommentsBlocked();
-            case "block_notifications": return Config.isNotificationsButtonBlocked();
-            case "block_threads": return Config.isThreadsButtonBlocked();
-            default: return Config.getBlocked(key, false);
-        }
+    static boolean isSurfaceHidden(String key) {
+        return Config.storedBlocked(key);
     }
 
-    private static String surfaceLabel(String key) {
+    static String surfaceLabel(String key) {
         switch (key) {
             case "block_feed": return "Home feed";
             case "block_explore": return "Explore";
@@ -799,7 +788,7 @@ public final class Settings {
     }
 
     /** Disable a settings row and everything in it, dimmed like a disabled control. */
-    private static void greyOut(View row) {
+    static void greyOut(View row) {
         if (row instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) row;
             for (int j = 0; j < group.getChildCount(); j++) group.getChildAt(j).setEnabled(false);
@@ -905,7 +894,7 @@ public final class Settings {
      * A row that opens a section page: Instagram's own outline icon, the name, a
      * one-line summary of the current state, and a chevron.
      */
-    private static void addSectionRow(Context context, LinearLayout parent, String icon, String label,
+    static void addSectionRow(Context context, LinearLayout parent, String icon, String label,
                                       String summary, Runnable onClick) {
         LinearLayout row = makeRow(context, parent, label, summary);
         Drawable glyph = igIcon(context, ON_SURFACE, "instagram_" + icon + "_pano_outline_24",
@@ -1063,7 +1052,7 @@ public final class Settings {
     }
 
     /** An unlabelled group, for a section page whose title already names it. */
-    private static LinearLayout addGroup(Context context, LinearLayout parent) {
+    static LinearLayout addGroup(Context context, LinearLayout parent) {
         LinearLayout group = new LinearLayout(context);
         group.setOrientation(LinearLayout.VERTICAL);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
@@ -1073,7 +1062,7 @@ public final class Settings {
         return group;
     }
 
-    private static LinearLayout.LayoutParams stackedButtonParams(Context context, int topDp) {
+    static LinearLayout.LayoutParams stackedButtonParams(Context context, int topDp) {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         lp.setMargins(0, dp(context, topDp), 0, 0);
@@ -1255,7 +1244,7 @@ public final class Settings {
     // --- Grouped lists --------------------------------------------------------
 
     /** A sentence-case section label, M3 Expressive style (not all-caps). */
-    private static void addSectionLabel(Context context, LinearLayout parent, String text) {
+    static void addSectionLabel(Context context, LinearLayout parent, String text) {
         TextView label = new TextView(context);
         label.setText(text);
         label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
@@ -1267,7 +1256,7 @@ public final class Settings {
     }
 
     /** Section label plus the container its rows go into. */
-    private static LinearLayout addSection(Context context, LinearLayout parent, String text) {
+    static LinearLayout addSection(Context context, LinearLayout parent, String text) {
         addSectionLabel(context, parent, text);
         LinearLayout group = new LinearLayout(context);
         group.setOrientation(LinearLayout.VERTICAL);
@@ -1279,7 +1268,7 @@ public final class Settings {
      * Give a finished group its connected shape: round on the outside, nearly
      * square where rows meet, with a hairline gap between them.
      */
-    private static void sealGroup(Context context, LinearLayout group) {
+    static void sealGroup(Context context, LinearLayout group) {
         int count = group.getChildCount();
         for (int i = 0; i < count; i++) {
             View row = group.getChildAt(i);
@@ -1298,7 +1287,7 @@ public final class Settings {
     }
 
     /** The shared skeleton of a list row: label, supporting text, trailing control. */
-    private static LinearLayout makeRow(Context context, LinearLayout parent, String label, String support) {
+    static LinearLayout makeRow(Context context, LinearLayout parent, String label, String support) {
         LinearLayout row = new LinearLayout(context);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
