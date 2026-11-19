@@ -6,6 +6,70 @@ All notable changes to Feurstagram should be documented in this file.
 
 Nothing yet.
 
+## v456-0-0-53-78
+
+### Added
+
+- **Block telemetry** (Settings → Privacy, on by default, and on after an update since the key
+  was never stored). `Block.onRequest` cancels, with an IOException at the Tigon request hook,
+  the uploads of usage analytics: Pigeon/Falco batches (`/pigeon_nest`,
+  `/logging_client_events`), `/launcher/mobileconfiglogging/`, `/news/log/` and the in-app
+  browser's `/fbevents.js`. Sign-in, two-factor, integrity and security checks, configuration,
+  uploads, messages and content are untouched; read receipts and story views belong to ghost
+  mode. Independent of Ads, and excluded from the permanent lock so it stays reversible.
+  Measured over every Ads × Telemetry pairing: sponsored reels and sent uploads each follow only
+  their own switch, with no failed response.
+- **Ghost mode** (Settings → Privacy, three options, all off by default, outside the lock), after
+  piko: *Hide DM read receipts* (the static method queueing the `mark_thread_seen-` mutation
+  returns at once; the chat stays unread locally too, and a reply sends no receipt), *Hide typing
+  indicator* (the composer's `onTextChanged`, found by its 0x800033/0x800013 input flags, returns
+  once the text is recorded) and *Hide story views* (`/api/v2/media/seen/?reel=…` cancelled).
+  Tested with two accounts; typing checked with JDI on the typing emitter (0/6 calls with the
+  option, 6/6 without).
+- **Grayscale** (Display, off by default): every window of the app gets a hardware layer whose
+  paint holds a zero-saturation colour matrix (windows caught through WindowManagerGlobal's root
+  views). The video player is sent down its own `getEnforceTextureView` path while it is on, so
+  Reels, feed and story videos are filtered too. Display only: saved and shared files keep their
+  colours. Not covered: the story camera preview and live video (system-composited SurfaceView).
+  Frame time over six Reels swipes: p50 5 → 7 ms, p90 10 → 15 ms, janky 3.8 % → 4.1 %.
+- **Comments** (Blocked surfaces, off by default, lockable), after piko's Disable comments:
+  post action-bar state built with comments disabled and no count; reel comment state swapped for
+  Instagram's static hidden instance; story reply-bar flags and `story_comments` emptied; the
+  story viewer's comment button and the single-reel "Add a comment…" bar hidden; comment-list
+  requests cancelled. Measured: every comment control gone with the switch on, all back with it
+  off.
+
+### Fixed
+
+- **"Feurstagram settings unavailable here".** The settings dialog was built on whatever context
+  the tapped view held; views Instagram pre-inflates, or keeps across an Activity re-creation,
+  are not on a live Activity, so `dialog.show()` threw BadTokenException. `Activities` finds the
+  view's owner by window token among the live Activities (latest resumed as a fallback),
+  `Settings.show()` waits a few frames for the window instead of failing and ignores taps while
+  open, and the Home long-press is put back on every layout pass. Reproduced with the old code
+  (`SETTINGS --ez detached true`), fixed with the new one; checked on cold start, return to the
+  foreground, account switch, tab changes, Quoicouview, Home hidden, rapid taps and Back.
+- **Ads in Reels and Stories** (#177, #178, #181, #185). Reels ads come from
+  `/api/v1/ads/async_ads/` in `ad_media_items`, a field the response filter did not empty; story
+  ads from `/feed/injected_reels_media`, which was only filtered under the Reels toggle. Reels
+  allowed: 9 of 30 sponsored with Ads off, 0 of 40 with Ads on.
+- **Every story "unavailable" with the story tray hidden** (#180): the tray-entry hook sits on the
+  parser of every story model and returned null for all of them when Stories were blocked.
+- **"Share externally" doing nothing** (#182): the signature bypass trusted every key, so
+  Instagram's third-party intent scope removed the Android share sheet as a "Meta app". Both
+  trust checks now add only the app's own signing key; deep links still resolve.
+- **Shared reel failing on the first tap with Reels blocked** (#184): after a cache wipe the
+  emptied chaining stream could land before the opened reel's own `/clips/items/` request; it now
+  waits for it (2.5 s at most). 2/2 failures before, 0/3 after; the reels after it stay blocked.
+
+### Changed
+
+- Updated to Instagram 456.0.0.53.78: the inbox refresh action moved into a static helper of
+  `onCreateView`, and the camera-panel update was inlined back into `onTabChanged` with the Home
+  tab loaded long before its check; Quoicouview mode follows both.
+- Debug bridge: `CAPTURE --es path <fragment> [--ei count n]` saves responses to the app cache;
+  `SETTINGS --ez detached true` opens the settings from a detached view.
+
 ## v456-0-0-24-78
 
 ### Added
