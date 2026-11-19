@@ -10,6 +10,14 @@ Le document natif [FeurStagram.sketch](sketch/FeurStagram.sketch) est la source 
 | 04 · Bannières et partage | Bannière du README, deux planches de captures, aperçu du site et aperçu GitHub |
 | 05 · Icônes | Favicon, icône carrée, tracé de profil, aperçu adaptatif et plans de lanceur |
 
+## Stories Instagram
+
+[FeurStagram-stories.sketch](stories/FeurStagram-stories.sketch) est une copie du document de marque qui contient les stories de chaque version, une page par version (`06 · Stories v456-0-0-53-78`). Il reprend les composants, variables couleur, styles de texte et cadres de capture de la marque, avec des styles `Typographie / Story / …` dimensionnés pour des plans de 1080 × 1920. Les textes sont descriptifs. Les PNG exportés de chaque version sont rangés dans `stories/<version>/`. Pour une nouvelle version, dupliquer la dernière page, la renommer, remplacer les captures dans leurs masques arrondis et exporter :
+
+```sh
+/Applications/Sketch.app/Contents/MacOS/sketchtool export artboards design/stories/FeurStagram-stories.sketch --formats=png --output=design/stories/<version>
+```
+
 ## Modifier la marque dans Sketch
 
 1. Ouvrir [FeurStagram.sketch](sketch/FeurStagram.sketch). Le fichier a été créé dans Sketch 2025.3.4. Les glyphes du mot-symbole sont des tracés et la page Règles utilise du texte éditable. La police Inter est disponible dans [fonts/](fonts/) sous licence SIL OFL. La police variable sert au web, la face statique Black 900 est la référence du mot-symbole. [Distribution Inter 4.1](https://github.com/rsms/inter/releases/tag/v4.1).
