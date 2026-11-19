@@ -1,0 +1,124 @@
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--brand-ink);
+    color: var(--brand-paper);
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.6;
+}
+
+a { color: inherit; text-underline-offset: 0.2em; }
+a:focus-visible { outline: 2px solid var(--brand-paper); outline-offset: 4px; }
+::selection { background: var(--brand-paper); color: var(--brand-ink); }
+
+.container { max-width: 1080px; margin-inline: auto; padding-inline: 24px; }
+.hero { padding-block: clamp(60px, 10vw, 144px) clamp(56px, 8vw, 104px); }
+.hero h1 { margin: 0 0 12px; }
+.hero-logo {
+    display: block;
+    width: min(100%, 660px);
+    height: auto;
+    margin: 0 0 12px clamp(-20px, -2.9%, 0px);
+}
+.h1-sub {
+    display: block;
+    font-size: clamp(1.3rem, 3vw, 2rem);
+    font-weight: 700;
+    letter-spacing: -0.035em;
+    line-height: 1.2;
+    text-wrap: balance;
+}
+.tagline {
+    margin: 0 0 36px;
+    max-width: 54ch;
+    font-size: clamp(1.05rem, 2.2vw, 1.25rem);
+    color: var(--brand-secondary);
+}
+
+.button-group, .download-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 12px 16px;
+    background: var(--brand-surface);
+    border: 1px solid var(--brand-line);
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color 150ms ease;
+}
+.btn:hover { background: var(--brand-hover); }
+.btn-primary { background: var(--brand-paper); color: var(--brand-ink); border-color: var(--brand-paper); }
+.btn-primary:hover { background: var(--brand-secondary); }
+.btn-disabled { opacity: .5; pointer-events: none; }
+.btn svg { width: 18px; height: 18px; flex: none; }
+.btn-text { display: grid; line-height: 1.3; }
+.btn-meta { font-size: .75rem; font-weight: 400; opacity: .8; }
+
+.downloads-total, .contact-line, .developed-by, footer {
+    font-size: .9rem;
+    color: var(--brand-muted);
+}
+.downloads-total { font-variant-numeric: tabular-nums; }
+.downloads-total strong { color: var(--brand-paper); }
+
+.quick-links { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-block: 24px 12px; }
+.quick-links a, .contact-line a, .developed-by a, footer a { color: var(--brand-secondary); }
+.quick-links a:hover, .contact-line a:hover, .developed-by a:hover, footer a:hover { color: var(--brand-paper); }
+.discord-cta, .updates-cta { display: inline-flex; margin: 8px 8px 0 0; }
+
+.features, .info-section { padding-block: 0 72px; }
+.section-header { border-top: 1px solid var(--brand-line); padding-top: 30px; margin-bottom: 24px; }
+.section-header h2 {
+    margin: 0 0 8px;
+    max-width: 26ch;
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
+    line-height: 1.16;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+}
+.section-header p { margin: 0; max-width: 64ch; color: var(--brand-secondary); }
+.timer-feature { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 240px); gap: 32px; align-items: start; }
+.timer-feature p { margin: 0 0 16px; max-width: 62ch; color: var(--brand-secondary); }
+.timer-feature img { display: block; width: 100%; height: auto; border: 1px solid var(--brand-line); border-radius: 16px; }
+.features-grid, .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr));
+    gap: 12px;
+}
+.feature-card {
+    background: var(--brand-surface);
+    border: 1px solid var(--brand-line);
+    border-radius: 8px;
+    padding: 24px;
+}
+.feature-card h3 { margin: 0 0 6px; font-size: 1.15rem; line-height: 1.3; }
+.feature-card p { margin: 0; color: var(--brand-secondary); font-size: .95rem; }
+.guide-card { display: block; text-decoration: none; }
+.guide-card:hover { background: var(--brand-hover); }
+.feature-icon { display: inline-block; margin-right: 8px; }
+.status-badge { color: var(--brand-secondary); font-size: .85rem; display: inline-block; margin-bottom: 10px; }
+
+footer { border-top: 1px solid var(--brand-line); padding: 24px; text-align: center; }
+
+@media (max-width: 640px) {
+    .container { padding-inline: 18px; }
+    .hero { padding-block: 48px 56px; }
+    .button-group, .download-controls { flex-direction: column; align-items: stretch; }
+    .button-group { max-width: 390px; }
+    .feature-card { padding: 18px; }
+    .timer-feature { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .timer-feature img { max-width: 240px; }
+    .features, .info-section { padding-bottom: 48px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .btn { transition: none; }
+}

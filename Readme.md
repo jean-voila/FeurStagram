@@ -1,6 +1,5 @@
 <div align="center">
-  <img src="docs/app_icon.png" alt="Feurstagram logo" width="128" height="128">
-  <h1>Feurstagram</h1>
+  <h1><img src="docs/assets/brand/readme-banner.png" alt="FeurStagram" width="1280" height="368"></h1>
   <p><strong>Instagram without Reels, feed, Explore or ads.</strong></p>
   <p>
     Feurstagram is <a href="https://jean-voila.github.io/FeurStagram/instagram-without-reels/">Instagram without Reels</a>:
@@ -20,7 +19,6 @@
 
 <p align="center">
   <a href="https://github.com/sponsors/jean-voila"><img alt="Support on GitHub Sponsors" src="https://img.shields.io/badge/GitHub%20Sponsors-Support%20the%20Project-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white"></a>
-  <br><br>
   <a href="https://buymeacoffee.com/jean_voila"><img alt="Buy Me A Coffee" src="https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support%20the%20Project-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black"></a>
 </p>
 <p align="center">
@@ -45,10 +43,6 @@
   <a href="https://github.com/jean-voila/Feurstagram/issues">Issues</a>
 </p>
 
-<p align="center">
-  <img src="docs/preview.png" alt="Feurstagram social preview" width="720">
-</p>
-
 ## What it keeps and blocks
 
 | Keep using Instagram for | Remove or block |
@@ -61,11 +55,11 @@
 ## Preview
 
 <p align="center">
-  <img src="docs/screens.png" alt="Feurstagram screenshots" width="680">
+  <a href="docs/assets/brand/screenshots.png"><img src="docs/assets/brand/screenshots.png" alt="FeurStagram home, Quoicouview with stories and messages, blocked surfaces, and navigation settings" width="960"></a>
 </p>
 
 <p align="center">
-  <img src="docs/tuto.gif" alt="Feurstagram settings tutorial" width="300">
+  <a href="docs/assets/brand/settings-screenshots.png"><img src="docs/assets/brand/settings-screenshots.png" alt="FeurStagram settings, Unlock timer session and allowance options, and Ghost mode controls" width="960"></a>
 </p>
 
 ## Is it safe?
@@ -109,9 +103,11 @@ I built this project for myself as an alternative to [DFInstagram](https://www.d
 - [Installation guide](docs/INSTALL.md)
 - [Build from source](docs/BUILD_FROM_SOURCE.md)
 - [FAQ](docs/FAQ.md)
+- [Unlock timer](docs/FAQ.md#how-does-the-unlock-timer-work)
 - [Privacy](docs/PRIVACY.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
+- [Visual identity and asset sources](design/README.md)
 
 ## How do I get notified when there is a new update ?
 

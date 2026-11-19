@@ -1,14 +1,11 @@
 :root {
-    --bg: #000000;
-    --bg-2: #0a0a0a;
-    --bg-3: #141414;
-    --text: #ffffff;
-    --text-2: rgba(255, 255, 255, 0.72);
-    --text-3: rgba(255, 255, 255, 0.5);
-    --accent: #10a37f;
-    --border: rgba(255, 255, 255, 0.1);
-    --yes: #34d399;
-    --no: #f87171;
+    --bg: var(--brand-ink);
+    --bg-2: var(--brand-surface);
+    --bg-3: var(--brand-hover);
+    --text: var(--brand-paper);
+    --text-2: var(--brand-secondary);
+    --text-3: var(--brand-muted);
+    --border: var(--brand-line);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -24,11 +21,11 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
-::selection { background: rgba(16, 163, 127, 0.3); }
+::selection { background: var(--text); color: var(--bg); }
 
 a { color: var(--text); text-underline-offset: 3px; text-decoration-color: rgba(255, 255, 255, 0.35); }
 a:hover { text-decoration-color: var(--text); }
-a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; border-radius: 4px; }
 
 /* Header */
 .site-header {
@@ -36,8 +33,7 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
     position: sticky;
     top: 0;
     z-index: 10;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(10px);
+    background: var(--bg);
 }
 .site-header .inner {
     max-width: 1080px;
@@ -48,8 +44,8 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
     gap: 20px;
     flex-wrap: wrap;
 }
-.brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; text-decoration: none; letter-spacing: -0.01em; }
-.brand img { width: 28px; height: 28px; border-radius: 7px; }
+.brand { display: inline-flex; align-items: center; margin-inline-start: -5px; }
+.brand img { display: block; width: 174px; height: auto; }
 .site-nav { display: flex; gap: 18px; flex-wrap: wrap; margin-left: auto; font-size: 0.93rem; }
 .site-nav a { color: var(--text-2); text-decoration: none; }
 .site-nav a:hover, .site-nav a[aria-current="page"] { color: var(--text); }
@@ -80,12 +76,12 @@ code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.88em
     display: inline-flex; align-items: center; gap: 10px;
     padding: 13px 22px; border-radius: 12px;
     font-weight: 600; font-size: 0.98rem; text-decoration: none;
-    border: 1px solid var(--border); color: var(--text); background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border); color: var(--text); background: var(--bg-2);
     transition: background 0.15s ease, transform 0.15s ease;
 }
-.btn:hover { background: rgba(255, 255, 255, 0.12); transform: translateY(-1px); }
+.btn:hover { background: var(--bg-3); transform: translateY(-1px); }
 .btn-primary { background: var(--text); color: var(--bg); border-color: var(--text); }
-.btn-primary:hover { background: rgba(255, 255, 255, 0.88); }
+.btn-primary:hover { background: var(--text-2); }
 .btn svg { width: 18px; height: 18px; flex-shrink: 0; }
 .downloads-line { font-size: 0.9rem; color: var(--text-3); margin: 0 0 28px; font-variant-numeric: tabular-nums; }
 
@@ -102,9 +98,9 @@ th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--bo
 th { color: var(--text); font-weight: 600; background: var(--bg-3); white-space: nowrap; }
 td { color: var(--text-2); }
 tr:last-child td { border-bottom: 0; }
-tr.highlight td { color: var(--text); background: rgba(16, 163, 127, 0.08); }
-.yes { color: var(--yes); font-weight: 600; }
-.no { color: var(--no); font-weight: 600; }
+tr.highlight td { color: var(--text); background: var(--bg-2); }
+.yes { color: var(--text); font-weight: 600; }
+.no { color: var(--text-2); font-weight: 600; }
 
 /* Cards */
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 10px 0 24px; }
@@ -141,6 +137,7 @@ a.card:hover { background: var(--bg-3); }
 .assets { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin: 12px 0 28px; }
 .asset { background: var(--bg-2); border: 1px solid var(--border); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
 .asset img { width: 100%; height: 220px; object-fit: contain; border-radius: 10px; background: var(--bg-3); }
+.brand-asset img { height: 136px; padding: 12px; background: var(--bg); }
 .asset span { font-size: 0.85rem; color: var(--text-3); }
 
 /* Footer */

@@ -27,7 +27,11 @@
     <meta property="og:title" content="Feurstagram: Instagram without Reels">
     <meta property="og:description"
         content="No Reels, no endless feed, no ads. Messages, stories and profiles stay. Free and open source for Android.">
-    <meta property="og:image" content="https://jean-voila.github.io/FeurStagram/preview.png">
+    <meta property="og:image" content="https://jean-voila.github.io/FeurStagram/assets/brand/open-graph.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="FeurStagram logo on a dark background">
     <meta property="og:locale" content="en_US">
     <meta property="og:locale:alternate" content="fr_FR">
 
@@ -37,12 +41,13 @@
     <meta name="twitter:title" content="Feurstagram: Instagram without Reels">
     <meta name="twitter:description"
         content="No Reels, no endless feed, no ads. Messages, stories and profiles stay. Free and open source for Android.">
-    <meta name="twitter:image" content="https://jean-voila.github.io/FeurStagram/preview.png">
+    <meta name="twitter:image" content="https://jean-voila.github.io/FeurStagram/assets/brand/open-graph.png">
+    <meta name="twitter:image:alt" content="FeurStagram logo on a dark background">
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="assets/img/icon-256.png">
-    <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
-    <link rel="preload" as="image" href="assets/img/icon-256.webp" type="image/webp">
+    <link rel="icon" sizes="16x16 32x32 48x48" href="assets/brand/favicon.ico">
+    <link rel="icon" type="image/svg+xml" sizes="any" href="assets/brand/favicon.svg">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/brand/apple-touch-icon.png">
 
     <script type="application/ld+json">
     [{
@@ -71,564 +76,23 @@
         "@type": "Organization",
         "name": "Feurstagram",
         "url": "https://jean-voila.github.io/FeurStagram/",
-        "logo": "https://jean-voila.github.io/FeurStagram/app_icon.png",
+        "logo": "https://jean-voila.github.io/FeurStagram/assets/brand/app-icon-256.png",
         "email": "feurstagram@gmail.com",
         "sameAs": ["https://github.com/jean-voila/FeurStagram", "https://www.instagram.com/feurstagram_off/", "https://discord.gg/Z9QvMw8s76"]
     }]
     </script>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-primary: #000000;
-            --bg-secondary: #0a0a0a;
-            --bg-tertiary: #141414;
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255, 255, 255, 0.7);
-            --text-tertiary: rgba(255, 255, 255, 0.5);
-            --accent: #10a37f;
-            --accent-hover: #1a7f64;
-            --border: rgba(255, 255, 255, 0.1);
-            --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            line-height: 1.6;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        /* Subtle animated gradient background */
-        .bg-gradient {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background:
-                radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120, 119, 198, 0.15), transparent),
-                radial-gradient(ellipse 60% 40% at 80% 50%, rgba(255, 99, 132, 0.08), transparent),
-                radial-gradient(ellipse 50% 30% at 20% 80%, rgba(16, 163, 127, 0.1), transparent);
-            pointer-events: none;
-            z-index: 0;
-            animation: gradientMove 20s ease-in-out infinite;
-            background-size: 200% 200%;
-        }
-
-        @keyframes gradientMove {
-
-            0%,
-            100% {
-                background-position: 0% 0%;
-                filter: hue-rotate(0deg);
-            }
-
-            25% {
-                background-position: 100% 50%;
-            }
-
-            50% {
-                background-position: 50% 100%;
-                filter: hue-rotate(30deg);
-            }
-
-            75% {
-                background-position: 0% 50%;
-            }
-        }
-
-        .container {
-            position: relative;
-            z-index: 1;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 24px;
-        }
-
-        /* Hero Section */
-        .hero {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 80px 24px;
-        }
-
-        .app-icon {
-            width: 120px;
-            height: 120px;
-            border-radius: 28px;
-            margin-bottom: 32px;
-            box-shadow:
-                0 20px 40px rgba(0, 0, 0, 0.4),
-                0 0 0 1px rgba(255, 255, 255, 0.1);
-            cursor: pointer;
-            will-change: transform;
-            user-select: none;
-            -webkit-user-drag: none;
-            pointer-events: none;
-        }
-
-        .hero h1 {
-            font-size: clamp(2.5rem, 8vw, 4.5rem);
-            font-weight: 700;
-            letter-spacing: -0.03em;
-            margin-bottom: 16px;
-            background: linear-gradient(180deg, #fff 0%, rgba(255, 255, 255, 0.8) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .hero h1 .h1-sub {
-            display: block;
-            font-size: 0.42em;
-            letter-spacing: -0.01em;
-            margin-top: 8px;
-        }
-
-        .downloads-total {
-            margin-top: 18px;
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-            font-variant-numeric: tabular-nums;
-        }
-
-        .downloads-total strong {
-            color: var(--text-primary);
-            font-weight: 600;
-        }
-
-        .guide-card {
-            text-decoration: none;
-            color: inherit;
-            display: block;
-        }
-
-        .contact-line {
-            margin-top: 14px;
-            color: var(--text-tertiary);
-            font-size: 0.9rem;
-        }
-
-        .contact-line a {
-            color: var(--text-secondary);
-        }
-
-        .hero .tagline {
-            font-size: clamp(1.1rem, 3vw, 1.5rem);
-            color: var(--text-secondary);
-            max-width: 600px;
-            margin-bottom: 48px;
-            font-weight: 400;
-        }
-
-        /* Buttons */
-        .button-group {
-            display: flex;
-            gap: 16px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            padding: 16px 28px;
-            font-size: 1rem;
-            font-weight: 600;
-            text-decoration: none;
-            border-radius: 12px;
-            transition: all 0.2s ease;
-            cursor: pointer;
-            border: none;
-            font-family: inherit;
-        }
-
-        .btn-primary {
-            background: var(--text-primary);
-            color: var(--bg-primary);
-        }
-
-        .btn-primary:hover {
-            background: rgba(255, 255, 255, 0.9);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(255, 255, 255, 0.15);
-        }
-
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.08);
-            color: var(--text-primary);
-            border: 1px solid var(--border);
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.12);
-            border-color: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
-        }
-
-        .discord-cta {
-            margin-top: 14px;
-        }
-
-        .btn-discord {
-            background: #5865F2;
-            color: #ffffff;
-            border: 1px solid #5865F2;
-            padding: 10px 16px;
-            font-size: 0.9rem;
-            border-radius: 10px;
-            gap: 8px;
-        }
-
-        .btn-discord:hover {
-            background: #4752c4;
-            border-color: #4752c4;
-            transform: translateY(-2px);
-        }
-
-        .btn-discord svg {
-            width: 18px;
-            height: 14px;
-            display: block;
-            flex-shrink: 0;
-        }
-
-        .updates-cta {
-            margin-top: 16px;
-            display: flex;
-            justify-content: center;
-        }
-
-        .btn-instagram {
-            background: transparent;
-            color: #ffffff;
-            border: none;
-            box-shadow: 0 12px 28px rgba(214, 41, 118, 0.35);
-            padding: 12px 20px;
-            position: relative;
-            overflow: hidden;
-            isolation: isolate;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .btn-instagram::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            border-radius: inherit;
-            background: linear-gradient(135deg, #feda75 0%, #fa7e1e 22%, #d62976 52%, #962fbf 78%, #4f5bd5 100%);
-            z-index: -1;
-        }
-
-        .btn-instagram:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 16px 32px rgba(214, 41, 118, 0.4);
-        }
-
-        .btn-instagram:hover::before {
-            filter: brightness(1.06);
-        }
-
-        .btn-instagram svg {
-            width: 18px;
-            height: 18px;
-            display: block;
-            flex-shrink: 0;
-        }
-
-        .btn svg {
-            width: 20px;
-            height: 20px;
-            flex-shrink: 0;
-        }
-
-        .btn-text {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            line-height: 1.3;
-        }
-
-        .btn-main {
-            font-weight: 600;
-        }
-
-        .btn-meta {
-            font-size: 0.75rem;
-            opacity: 0.7;
-            font-weight: 400;
-        }
-
-        .download-controls {
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .quick-links {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-top: 24px;
-            max-width: 760px;
-        }
-
-        .quick-links a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            border-bottom: 1px solid transparent;
-            font-size: 0.95rem;
-        }
-
-        .quick-links a:hover {
-            color: var(--text-primary);
-            border-color: var(--text-primary);
-        }
-
-        .btn-disabled {
-            opacity: 0.5;
-            pointer-events: none;
-            transform: none !important;
-            box-shadow: none !important;
-        }
-
-        .developed-by {
-            margin-top: 24px;
-            color: var(--text-tertiary);
-            font-size: 0.875rem;
-        }
-
-        .developed-by a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            transition: color 0.2s ease;
-        }
-
-        .developed-by a:hover {
-            color: var(--text-primary);
-        }
-
-        /* Features Section */
-        .features {
-            padding: 80px 0 120px;
-        }
-
-        .section-header {
-            text-align: center;
-            margin-bottom: 64px;
-        }
-
-        .section-header h2 {
-            font-size: clamp(1.75rem, 4vw, 2.5rem);
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            margin-bottom: 16px;
-        }
-
-        .section-header p {
-            color: var(--text-secondary);
-            font-size: 1.125rem;
-            max-width: 500px;
-            margin: 0 auto;
-        }
-
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-        }
-
-        .info-section {
-            padding: 0 0 80px;
-        }
-
-        .info-section .section-header {
-            margin-bottom: 32px;
-        }
-
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-        }
-
-        .feature-card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 32px;
-            will-change: transform;
-            cursor: default;
-        }
-
-        .feature-card:hover {
-            background: var(--bg-tertiary);
-            border-color: rgba(255, 255, 255, 0.15);
-        }
-
-        .feature-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 20px;
-            font-size: 24px;
-        }
-
-        .feature-icon.blocked {
-            background: rgba(239, 68, 68, 0.15);
-        }
-
-        .feature-icon.enabled {
-            background: rgba(16, 163, 127, 0.15);
-        }
-
-        .feature-card h3 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .feature-card p {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-        }
-
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 12px;
-        }
-
-        .status-badge.blocked {
-            background: rgba(239, 68, 68, 0.15);
-            color: #f87171;
-        }
-
-        .status-badge.enabled {
-            background: rgba(16, 163, 127, 0.15);
-            color: #34d399;
-        }
-
-        /* Footer */
-        footer {
-            padding: 40px 24px;
-            text-align: center;
-            border-top: 1px solid var(--border);
-        }
-
-        footer p {
-            color: var(--text-tertiary);
-            font-size: 0.875rem;
-        }
-
-        footer a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            transition: color 0.2s ease;
-        }
-
-        footer a:hover {
-            color: var(--text-primary);
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 640px) {
-            .hero {
-                padding: 60px 20px;
-            }
-
-            .app-icon {
-                width: 96px;
-                height: 96px;
-                border-radius: 22px;
-            }
-
-            .button-group {
-                flex-direction: column;
-                width: 100%;
-                max-width: 320px;
-            }
-
-            .btn {
-                justify-content: center;
-                width: 100%;
-            }
-
-            .discord-cta .btn-discord {
-                width: auto;
-            }
-
-            .updates-cta .btn-instagram {
-                width: 100%;
-                max-width: 320px;
-                justify-content: center;
-            }
-
-            .download-controls {
-                width: 100%;
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .quick-links {
-                flex-direction: column;
-                align-items: center;
-            }
-
-            .feature-card {
-                padding: 24px;
-            }
-        }
-
-        /* Smooth scroll */
-        html {
-            scroll-behavior: smooth;
-        }
-
-        /* Selection */
-        ::selection {
-            background: rgba(16, 163, 127, 0.3);
-        }
-    </style>
+    <link rel="stylesheet" href="assets/brand/tokens.css">
+    <link rel="stylesheet" href="assets/home.css">
 </head>
 
 <body>
-    <div class="bg-gradient"></div>
-
     <main>
-        <section class="hero">
-            <img src="assets/img/icon-256.webp" alt="Feurstagram icon" class="app-icon" width="120" height="120" draggable="false">
-            <h1>Feurstagram<span class="h1-sub">Instagram without Reels</span></h1>
+        <section class="hero container">
+            <h1>
+                <img class="hero-logo" src="assets/brand/horizontal-paper.svg" width="807" height="148" alt="FeurStagram">
+                <span class="h1-sub">Instagram without Reels</span>
+            </h1>
             <p class="tagline">Instagram for Android without Reels, the endless feed, Explore or ads. Keep messaging, stories, and profiles.</p>
 
             <div class="button-group">
@@ -712,60 +176,75 @@
 
             <div class="features-grid">
                 <div class="feature-card">
-                    <div class="feature-icon blocked">❌</div>
+                    <div class="feature-icon" aria-hidden="true">×</div>
                     <span class="status-badge blocked">Blocked</span>
                     <h3>Feed Posts</h3>
                     <p>The endless home feed is hidden after its native request completes. No more doomscrolling.</p>
                 </div>
 
                 <div class="feature-card">
-                    <div class="feature-icon blocked">❌</div>
+                    <div class="feature-icon" aria-hidden="true">×</div>
                     <span class="status-badge blocked">Hidden</span>
                     <h3>Explore Tab</h3>
                     <p>The suggested Explore content is hidden to prevent infinite browsing.</p>
                 </div>
 
                 <div class="feature-card">
-                    <div class="feature-icon blocked">❌</div>
+                    <div class="feature-icon" aria-hidden="true">×</div>
                     <span class="status-badge blocked">Hidden</span>
                     <h3>Reels Tab</h3>
                     <p>Reels content is filtered after reception and the tab icon is hidden from the bottom bar. No infinite video loops.</p>
                 </div>
 
                 <div class="feature-card">
-                    <div class="feature-icon blocked">❌</div>
+                    <div class="feature-icon" aria-hidden="true">×</div>
                     <span class="status-badge blocked">Hidden</span>
                     <h3>Instants (+ in DMs)</h3>
                     <p>The intrusive Instants "+" button at the bottom-right of the inbox is hidden. Toggleable.</p>
                 </div>
 
                 <div class="feature-card">
-                    <div class="feature-icon blocked">❌</div>
+                    <div class="feature-icon" aria-hidden="true">×</div>
                     <span class="status-badge blocked">Hidden</span>
                     <h3>Notes (above DMs)</h3>
                     <p>The row of friends' text-bubble Notes at the top of the inbox is hidden. Toggleable.</p>
                 </div>
 
                 <div class="feature-card">
-                    <div class="feature-icon enabled">✓</div>
+                    <div class="feature-icon" aria-hidden="true">✓</div>
                     <span class="status-badge enabled">Works</span>
                     <h3>Stories</h3>
                     <p>View and post stories from the people you follow.</p>
                 </div>
 
                 <div class="feature-card">
-                    <div class="feature-icon enabled">✓</div>
+                    <div class="feature-icon" aria-hidden="true">✓</div>
                     <span class="status-badge enabled">Works</span>
                     <h3>Direct Messages</h3>
                     <p>Full messaging functionality including shared reels and posts.</p>
                 </div>
 
                 <div class="feature-card">
-                    <div class="feature-icon enabled">✓</div>
+                    <div class="feature-icon" aria-hidden="true">✓</div>
                     <span class="status-badge enabled">Works</span>
                     <h3>Profile & Search</h3>
                     <p>Access your profile, search for users, and get notifications.</p>
                 </div>
+            </div>
+        </section>
+
+        <section class="info-section container" aria-labelledby="unlock-timer">
+            <div class="section-header">
+                <h2 id="unlock-timer">Unlock timer</h2>
+            </div>
+            <div class="timer-feature">
+                <div>
+                    <p>On builds that include Unlock timer, open <strong>FeurStagram settings → Content → Unlock timer</strong> to give selected blocked surfaces a time allowance that refills daily or weekly.</p>
+                    <p>Start a session and use the draggable countdown to pause or resume. The selected surfaces are blocked again when you pause or run out of time.</p>
+                </div>
+                <a href="assets/img/unlock-timer.png">
+                    <img src="assets/img/unlock-timer-540.webp" width="540" height="1205" alt="Unlock timer settings showing the session allowance and which surfaces it can reopen" loading="lazy" decoding="async">
+                </a>
             </div>
         </section>
 
@@ -889,39 +368,11 @@
 
     <script data-name="BMC-Widget" data-cfasync="false" src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js"
         data-id="jean_voila" data-description="Support me on Buy me a coffee!" data-message=""
-        data-color="#FFDD00" data-position="Right" data-x_margin="18" data-y_margin="18"></script>
+        data-color="#F7F7F7" data-position="Right" data-x_margin="18" data-y_margin="18"></script>
 
     <script src="assets/site.js"></script>
     <script>
         const FALLBACK_RELEASE_URL = 'https://github.com/jean-voila/Feurstagram/releases/latest';
-
-        // 3D Tilt Effect
-        function initTilt(element, intensity = 15) {
-            element.style.transformStyle = 'preserve-3d';
-            element.style.transition = 'transform 0.1s ease-out';
-
-            element.addEventListener('mousemove', (e) => {
-                const rect = element.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                const centerX = rect.width / 2;
-                const centerY = rect.height / 2;
-
-                const rotateX = ((y - centerY) / centerY) * -intensity;
-                const rotateY = ((x - centerX) / centerX) * intensity;
-
-                element.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
-            });
-
-            element.addEventListener('mouseleave', () => {
-                element.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
-            });
-        }
-
-        // Apply to feature cards
-        document.querySelectorAll('.feature-card').forEach(card => {
-            initTilt(card, 8);
-        });
 
         let latestApkAssets = [];
 

@@ -52,6 +52,14 @@ turned off, even with the permanent lock on.
 
 Feurstagram is unofficial and modifies the Instagram Android app. This may violate Instagram's terms of service. Use it at your own risk.
 
+## How does the Unlock timer work?
+
+On builds that include it, open **FeurStagram settings → Content → Unlock timer**. The timer is off by default. Enable it, choose which blocked surfaces it can reopen, and set an allowance. The allowance refills daily at midnight or weekly on Monday at midnight.
+
+Start a session from the timer page. A draggable countdown shows the time left. Tap it to pause or resume. Pausing blocks those surfaces again and preserves the remaining time. Skip forfeits the remaining allowance until the next refill. Starting, pausing, resuming, skipping or running out of time clears the cache and restarts Instagram.
+
+Under Permanent lock, you can narrow the timer by selecting fewer surfaces, reducing the allowance, switching from daily to weekly refill, or turning it off.
+
 ## Why not use a WebView wrapper?
 
 Feurstagram patches the real Android Instagram app instead of wrapping the website in a WebView. This allows it to keep the native app experience while removing specific distracting features.
