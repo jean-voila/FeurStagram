@@ -12,11 +12,7 @@ Le document natif [FeurStagram.sketch](sketch/FeurStagram.sketch) est la source 
 
 ## Stories Instagram
 
-[FeurStagram-stories.sketch](stories/FeurStagram-stories.sketch) est une copie du document de marque qui contient les stories de chaque version, une page par version (`06 · Stories v456-0-0-53-78`). Il reprend les composants, variables couleur, styles de texte et cadres de capture de la marque, avec des styles `Typographie / Story / …` dimensionnés pour des plans de 1080 × 1920. Les textes sont descriptifs. Les PNG exportés de chaque version sont rangés dans `stories/<version>/`. Pour une nouvelle version, dupliquer la dernière page, la renommer, remplacer les captures dans leurs masques arrondis et exporter :
-
-```sh
-/Applications/Sketch.app/Contents/MacOS/sketchtool export artboards design/stories/FeurStagram-stories.sketch --formats=png --output=design/stories/<version>
-```
+[FeurStagram-stories.sketch](stories/FeurStagram-stories.sketch) est une copie du document de marque qui contient les stories de chaque version, une page par version (`06 · Stories v456-0-0-53-78`). Il reprend les composants, variables couleur, styles de texte et cadres de capture de la marque, avec des styles `Typographie / Story / …` dimensionnés pour des plans de 1080 × 1920. Les textes sont descriptifs. Les PNG exportés de chaque version sont rangés dans `stories/<version>/`. Pour une nouvelle version, dupliquer la dernière page, la renommer, remplacer les captures dans leurs masques arrondis, puis exporter en PNG les plans de cette page seulement, dans `stories/<version>/`.
 
 ## Modifier la marque dans Sketch
 
