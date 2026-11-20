@@ -94,7 +94,7 @@ Unlike closed-source Instagram mods, every patch is public and auditable.
 
 Feurstagram is built for people who want to keep Instagram's useful social features without the addictive parts.
 
-I built this project for myself as an alternative to [DFInstagram](https://www.distractionfreeapps.com/) which hasn't been maintained for a long time and was difficult to update. I'm sharing it so others can do the same for themselves.
+I built this project for myself as an alternative to DFInstagram which hasn't been maintained for a long time and was difficult to update. I'm sharing it so others can do the same for themselves.
 
 **This project is entirely free and open-source.** Feel free to fork, copy, enhance, or submit pull requests - do whatever you want with it!
 
