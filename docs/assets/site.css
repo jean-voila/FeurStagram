@@ -99,8 +99,8 @@ th { color: var(--text); font-weight: 600; background: var(--bg-3); white-space:
 td { color: var(--text-2); }
 tr:last-child td { border-bottom: 0; }
 tr.highlight td { color: var(--text); background: var(--bg-2); }
-.yes { color: var(--text); font-weight: 600; }
-.no { color: var(--text-2); font-weight: 600; }
+.yes { color: #34d399; font-weight: 600; }
+.no { color: #f87171; font-weight: 600; }
 
 /* Cards */
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 10px 0 24px; }
